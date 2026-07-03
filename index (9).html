@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informativo de Estoque — VX Case</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root[data-theme="light"]{
+    --bg: #F3F1EA; --surface: #FFFFFF; --surface-2: #FAF8F3;
+    --text: #1B1D1A; --text-dim: #6B6A63; --border: #DEDAD0;
+    --baixa: #B3690F; --baixa-bg: #FBEEDD;
+    --zerado: #A62A22; --zerado-bg: #FBE7E4;
+    --ok: #2E6B49; --ok-bg: #E4F0E9;
+    --accent: #1B1D1A; --danger: #A62A22;
+    --shadow: 0 1px 2px rgba(20,20,15,0.06), 0 4px 14px rgba(20,20,15,0.05);
+  }
+  :root[data-theme="dark"]{
+    --bg: #15171A; --surface: #1D2023; --surface-2: #21262A;
+    --text: #EDEBE4; --text-dim: #97958C; --border: #2E3236;
+    --baixa: #E3A24C; --baixa-bg: #332617;
+    --zerado: #E56F65; --zerado-bg: #35201E;
+    --ok: #5FBE8B; --ok-bg: #1B2B22;
+    --accent: #EDEBE4; --danger: #E56F65;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;transition:background .2s ease, color .2s ease;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:20;}
+  header .brand{display:flex;align-items:baseline;gap:10px;}
+  header .brand .tag{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--text-dim);border:1px solid var(--border);padding:3px 8px;border-radius:4px;}
+  header h1{font-size:17px;font-weight:700;margin:0;letter-spacing:-0.01em;}
+  header .right{display:flex;align-items:center;gap:14px;}
+
+  .tabs{display:flex;gap:4px;padding:4px 28px 0;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:57px;z-index:19;}
+  .tab-btn{background:none;border:none;padding:10px 16px;font-size:13.5px;font-weight:600;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;}
+  .tab-btn.active{color:var(--text);border-bottom-color:var(--text);}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .theme-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;border:1px solid var(--border);background:var(--surface);padding:7px 12px;border-radius:20px;font-size:13px;font-weight:500;color:var(--text-dim);}
+  .theme-toggle:hover{color:var(--text);}
+
+  main{max-width:1180px;margin:0 auto;padding:28px;display:grid;grid-template-columns:380px 1fr;gap:24px;}
+  @media (max-width:900px){ main{grid-template-columns:1fr;} }
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:var(--shadow);}
+  .card + .card{margin-top:20px;}
+  .card h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin:0 0 16px;font-weight:700;}
+
+  label{display:block;font-size:12.5px;font-weight:600;margin:14px 0 6px;color:var(--text-dim);}
+  label:first-of-type{margin-top:0;}
+  input[type=text], input[type=date], select, textarea{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-family:inherit;font-size:14px;}
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--text-dim);outline-offset:1px;}
+  textarea{resize:vertical;min-height:52px;}
+
+  .autocomplete-wrap{position:relative;}
+  .ac-results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);max-height:220px;overflow-y:auto;z-index:30;display:none;}
+  .ac-results.show{display:block;}
+  .ac-item{padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);}
+  .ac-item:last-child{border-bottom:none;}
+  .ac-item:hover, .ac-item.hl{background:var(--surface-2);}
+  .ac-item .c{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:11.5px;color:var(--text-dim);}
+  .ac-empty{padding:10px 12px;font-size:12.5px;color:var(--text-dim);}
+
+  .selected-produto{margin-top:8px;padding:10px 12px;background:var(--ok-bg);border:1px solid var(--ok);border-radius:8px;font-size:13px;display:none;}
+  .selected-produto.show{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .selected-produto .nm{color:var(--ok);font-weight:600;}
+  .selected-produto button{background:none;border:none;color:var(--ok);cursor:pointer;font-size:12px;text-decoration:underline;padding:0;}
+
+  .switch-row{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding:10px 12px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border);}
+  .switch-row span{font-size:13.5px;font-weight:600;}
+  .switch{position:relative;width:40px;height:22px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;inset:0;background:var(--border);border-radius:20px;cursor:pointer;transition:.15s;}
+  .slider:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:var(--surface);border-radius:50%;transition:.15s;}
+  input:checked + .slider{background:var(--ok);}
+  input:checked + .slider:before{transform:translateX(18px);}
+  .conditional{display:none;}
+  .conditional.show{display:block;}
+
+  button{font-family:inherit;font-weight:700;font-size:13.5px;border:none;border-radius:8px;padding:11px 16px;cursor:pointer;transition:.12s ease;}
+  .btn-primary{background:var(--text);color:var(--bg);width:100%;margin-top:18px;}
+  .btn-primary:hover{opacity:.88;}
+  .btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--text-dim);}
+  .btn-danger-ghost{background:transparent;color:var(--danger);border:1px solid var(--zerado-bg);}
+  .btn-danger-ghost:hover{background:var(--zerado-bg);}
+  .btn-small{padding:7px 10px;font-size:12px;}
+
+  .sub-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;}
+  .sub-row .autocomplete-wrap{flex:1;}
+  .sub-row .remove{flex-shrink:0;margin-top:0;}
+  .sub-chip{font-size:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:6px 9px;margin-top:4px;display:flex;justify-content:space-between;gap:8px;}
+  .sub-chip .c{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--text-dim);}
+  .sub-chip button{background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:0;line-height:1;}
+
+  .list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .list-header h2{margin:0;}
+  .select-all{font-size:12px;color:var(--text-dim);cursor:pointer;font-weight:600;}
+  .select-all:hover{color:var(--text);}
+
+  .product{border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;background:var(--surface-2);display:flex;gap:12px;align-items:flex-start;}
+  .product input[type=checkbox]{margin-top:3px;width:16px;height:16px;accent-color:var(--text);}
+  .product .body{flex:1;min-width:0;}
+  .product .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+  .product .nome{font-weight:700;font-size:14.5px;}
+  .product .codigo{font-size:12.5px;color:var(--text-dim);}
+  .badge{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:3px 8px;border-radius:5px;}
+  .badge.baixa{background:var(--baixa-bg);color:var(--baixa);}
+  .badge.zerado{background:var(--zerado-bg);color:var(--zerado);}
+  .badge.pre-ok{background:var(--ok-bg);color:var(--ok);}
+  .badge.pre-no{background:var(--surface);color:var(--text-dim);border:1px solid var(--border);}
+  .meta-line{font-size:12.5px;color:var(--text-dim);margin-top:4px;line-height:1.5;}
+  .meta-line b{color:var(--text);font-weight:600;}
+  .product .actions{display:flex;gap:6px;flex-shrink:0;}
+  .product .actions button{padding:6px 10px;font-size:12px;}
+
+  .empty{text-align:center;padding:40px 20px;color:var(--text-dim);font-size:13.5px;}
+
+  .stores{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px;background:var(--surface-2);}
+  .store-item{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:6px;font-size:13px;}
+  .store-item:hover{background:var(--surface);}
+  .store-item input{accent-color:var(--text);}
+
+  .preview{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;white-space:pre-wrap;line-height:1.6;color:var(--text);min-height:60px;}
+  .preview:empty:before{content:"Selecione produtos e lojas pra ver o preview.";color:var(--text-dim);font-family:'Inter',sans-serif;}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:12px 20px;border-radius:8px;font-size:13.5px;font-weight:600;box-shadow:var(--shadow);opacity:0;transition:.2s ease;pointer-events:none;z-index:50;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.error{background:var(--danger);color:#fff;}
+  .send-summary{font-size:12.5px;color:var(--text-dim);margin-top:10px;}
+  .send-summary b{color:var(--text);}
+
+  /* SUBSTITUTOS VIEW */
+  .sub-main{max-width:640px;margin:0 auto;padding:28px;}
+  .link-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);margin-bottom:8px;}
+  .link-item .info{font-size:13.5px;}
+  .link-item .info .c{font-family:'IBM Plex Mono',monospace;color:var(--text-dim);font-size:11.5px;margin-right:6px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Informativo de Estoque</h1>
+    <span class="tag">VX CASE</span>
+  </div>
+  <div class="right">
+    <div class="theme-toggle" id="themeToggle">
+      <span id="themeIcon">🌙</span>
+      <span id="themeLabel">Escuro</span>
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-view="viewInformativo">Informativo</button>
+  <button class="tab-btn" data-view="viewSubstitutos">Substitutos</button>
+</div>
+
+<!-- ===================== VIEW: INFORMATIVO ===================== -->
+<div class="view active" id="viewInformativo">
+<main>
+  <div>
+    <div class="card">
+      <h2>Cadastrar produto</h2>
+
+      <label>Código do produto</label>
+      <div class="autocomplete-wrap">
+        <input type="text" id="fCodigoBusca" placeholder="Digite código ou nome...">
+        <div class="ac-results" id="acProduto"></div>
+      </div>
+      <div class="selected-produto" id="selectedProdutoBox">
+        <span>Selecionado: <span class="c mono" id="selNomeProduto"></span></span>
+        <button id="btnLimparProduto">trocar</button>
+      </div>
+
+      <label>Situação</label>
+      <select id="fSituacao">
+        <option value="baixa">Baixo estoque</option>
+        <option value="zerado">Zerado</option>
+      </select>
+
+      <div class="switch-row">
+        <span>Tem previsão de chegada</span>
+        <label class="switch"><input type="checkbox" id="fTemPrevisao"><span class="slider"></span></label>
+      </div>
+      <div class="conditional" id="previsaoBox">
+        <label>Data prevista</label>
+        <input type="date" id="fDataPrevisao">
+      </div>
+
+      <div class="switch-row">
+        <span>Disponível pra pré-order</span>
+        <label class="switch"><input type="checkbox" id="fPreOrder"><span class="slider"></span></label>
+      </div>
+
+      <label style="margin-top:16px;">Código(s) substituto(s)</label>
+      <div id="substitutosContainer"></div>
+      <button class="btn-ghost btn-small" id="btnAddSubstituto" type="button">+ Adicionar substituto</button>
+
+      <label>Observação (opcional)</label>
+      <textarea id="fObservacao" placeholder="Detalhe adicional..."></textarea>
+
+      <button class="btn-primary" id="btnSalvar">Adicionar à lista</button>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="list-header">
+        <h2>Produtos ativos</h2>
+        <span class="select-all" id="selectAllProdutos">selecionar todos</span>
+      </div>
+      <div id="listaProdutos"></div>
+    </div>
+
+    <div class="card">
+      <div class="list-header"><h2>Enviar informativo</h2></div>
+      <label>Lojas destino</label>
+      <div class="list-header" style="margin-bottom:6px;">
+        <span></span>
+        <span class="select-all" id="selectAllLojas">selecionar todas</span>
+      </div>
+      <div class="stores" id="listaLojas"></div>
+      <label>Preview da mensagem</label>
+      <div class="preview" id="preview"></div>
+      <button class="btn-primary" id="btnEnviar" disabled>Enviar para lojas selecionadas</button>
+      <div class="send-summary" id="sendSummary"></div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- ===================== VIEW: SUBSTITUTOS ===================== -->
+<div class="view" id="viewSubstitutos">
+<div class="sub-main">
+  <div class="card">
+    <h2>Buscar produto em baixa</h2>
+    <label>Código do produto</label>
+    <div class="autocomplete-wrap">
+      <input type="text" id="fCodigoBuscaSub" placeholder="Digite código ou nome...">
+      <div class="ac-results" id="acProdutoSub"></div>
+    </div>
+    <div class="selected-produto" id="selectedProdutoSubBox">
+      <span>Selecionado: <span class="c mono" id="selNomeProdutoSub"></span></span>
+      <button id="btnLimparProdutoSub">trocar</button>
+    </div>
+  </div>
+
+  <div class="card" id="cardSubstitutosLista" style="display:none;">
+    <h2>Códigos que substituem esse produto</h2>
+    <div id="listaSubstitutosVinculados"></div>
+
+    <label style="margin-top:18px;">Adicionar novo código substituto</label>
+    <div class="autocomplete-wrap">
+      <input type="text" id="fNovoSubstituto" placeholder="Digite código ou nome...">
+      <div class="ac-results" id="acNovoSubstituto"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ========= CONFIG ========= */
+const SUPABASE_URL = "https://fevhyllvfhvzzfhwyjuk.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZldmh5bGx2Zmh2enpmaHd5anVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzEyMTcsImV4cCI6MjA5NDQ0NzIxN30.GJRgEKW1bVWX1957_bKCTO6aVmR_rXWRCmo9-ZJDPiE";
+
+const EVOLUTION_URL = "https://evolution.vxcase.com.br";
+const EVOLUTION_INSTANCE = "FARDAMENTOS";
+const EVOLUTION_APIKEY = "B168AAC08A5E-467D-A691-54F427D6D4E8";
+
+const LOJAS = [
+  ["120363026668592251@g.us","BH BOULEVARD LOJA 1049"],
+  ["120363183913500022@g.us","BOTAFOGO LOJA 126"],
+  ["557199847870-1513727862@g.us","FEIRA DE SANTANA LOJA 213"],
+  ["557199847870-1611604025@g.us","GOIÂNIA SHOPPING LOJA 217"],
+  ["120363046934340487@g.us","BH DEL REY LOJA SDR 3025"],
+  ["120363030096815008@g.us","TIJUCA QUIOSQUE 105"],
+  ["120363146598665342@g.us","FORTALEZA RIOMAR LOJA 1173"],
+  ["120363082143579749@g.us","BH SAVASSI LOJA 103"],
+  ["557199847870-1524681160@g.us","VITORIA DA CONQUISTA LOJA 1017"],
+  ["557199847870-1508792377@g.us","FORTALEZA IGUATEMI LOJA 617"],
+  ["557199847870-1513634378@g.us","MANAUS MANAUARA LOJA 90"],
+  ["557199847870-1525840710@g.us","NITEROI LOJA SPN00313"],
+  ["557199847870-1543280119@g.us","MACEIÓ SHOPPING LOJA 308A"],
+  ["558182887000-1473531782@g.us","RIO DE JANEIRO FASHION LOJA 115"],
+  ["559192442055-1496446314@g.us","BELÉM BOULEVARD LOJA 459"],
+  ["557199847870-1513634228@g.us","NATAL SHOPPING LOJA 378"],
+  ["120363276112192310@g.us","NATAL MIDWAY LOJA 254"],
+  ["558282359991-1493325321@g.us","MACEIÓ PARQUE QUIOSQUE 04"],
+  ["120363276768615126@g.us","SÃO PAULO TAMBORÉ STB0027"],
+  ["557199847870-1513634519@g.us","BH SHOPPING LOJA 08"],
+  ["557199847870-1515418514@g.us","VILA VELHA LOJA 1031"],
+  ["557199847870-1513633579@g.us","GOIÂNIA FLAMBOYANT LOJA P438"],
+  ["557199847870-1513634147@g.us","ARACAJU RIOMAR LOJA 143A"],
+  ["557199847870-1530470534@g.us","RECIFE RIOMAR LOJA 1061"],
+  ["558182154402-1417545211@g.us","SHOPPING RECIFE LOJA PC145"],
+  ["120363276816324109@g.us","BELÉM PARQUE QUIOSQUE 07"],
+  ["120363270105189170@g.us","BH DIAMONDMALL LOJA BG57"],
+  ["120363337254500707@g.us","RIO DE JANEIRO DESIGN QUIOSQUE 3F"],
+  ["120363313739059909@g.us","BRASÍLIA LOJA 293"],
+  ["120363329742982545@g.us","MANAUS AMAZONAS QUIOSQUE A39"],
+  ["120363423144923019@g.us","CAMPINAS LOJA 1229"],
+  ["120363420094103882@g.us","RIO DE JANEIRO SUL LOJA 401"],
+];
+
+const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const T_STATUS = "produtos_status";
+const T_CATALOGO = "catalogo_produtos";
+const T_SUBSTITUTOS = "produto_substitutos";
+
+let produtos = [];
+let selectedProdutos = new Set();
+let selectedLojas = new Set();
+let produtoAtual = null; // {codigo, nome} selecionado no form principal
+let substitutosForm = []; // [{codigo, nome}]
+
+/* ========= TABS ========= */
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.view).classList.add("active");
+  };
+});
+
+/* ========= TEMA ========= */
+const root = document.documentElement;
+const themeToggle = document.getElementById("themeToggle");
+const themeIcon = document.getElementById("themeIcon");
+const themeLabel = document.getElementById("themeLabel");
+function applyTheme(t){
+  root.setAttribute("data-theme", t);
+  themeIcon.textContent = t === "light" ? "🌙" : "☀️";
+  themeLabel.textContent = t === "light" ? "Escuro" : "Claro";
+  localStorage.setItem("estoque_theme", t);
+}
+applyTheme(localStorage.getItem("estoque_theme") || "light");
+themeToggle.onclick = () => applyTheme(root.getAttribute("data-theme") === "light" ? "dark" : "light");
+
+/* ========= TOAST ========= */
+function toast(msg, isError){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = "toast show" + (isError ? " error" : "");
+  setTimeout(() => el.classList.remove("show"), 3200);
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+function fmtData(d){
+  if(!d) return null;
+  const [y,m,day] = d.split("-");
+  return `${day}/${m}/${y}`;
+}
+
+/* ========= AUTOCOMPLETE GENÉRICO ========= */
+// attachAutocomplete(inputEl, resultsBoxEl, onSelect(item), excludeCodesFn)
+function attachAutocomplete(inputEl, boxEl, onSelect, excludeCodesFn){
+  let timer = null;
+  let items = [];
+  let hlIndex = -1;
+
+  function render(){
+    if(items.length === 0){
+      boxEl.innerHTML = `<div class="ac-empty">Nenhum resultado.</div>`;
+    } else {
+      boxEl.innerHTML = items.map((it, i) => `
+        <div class="ac-item ${i===hlIndex?'hl':''}" data-i="${i}">
+          <span class="c">#${escapeHtml(it.codigo)}</span> — ${escapeHtml(it.nome)}
+        </div>`).join("");
+      boxEl.querySelectorAll(".ac-item").forEach(el => {
+        el.onclick = () => select(items[+el.dataset.i]);
+      });
+    }
+    boxEl.classList.add("show");
+  }
+
+  function select(item){
+    onSelect(item);
+    boxEl.classList.remove("show");
+    items = [];
+  }
+
+  inputEl.addEventListener("input", () => {
+    const q = inputEl.value.trim();
+    clearTimeout(timer);
+    if(q.length < 2){ boxEl.classList.remove("show"); return; }
+    timer = setTimeout(async () => {
+      const exclude = excludeCodesFn ? excludeCodesFn() : [];
+      let query = supa.from(T_CATALOGO).select("codigo,nome")
+        .or(`codigo.ilike.%${q}%,nome.ilike.%${q}%`)
+        .limit(10);
+      const { data, error } = await query;
+      if(error){ boxEl.innerHTML = `<div class="ac-empty">Erro na busca.</div>`; boxEl.classList.add("show"); return; }
+      items = (data || []).filter(it => !exclude.includes(it.codigo));
+      hlIndex = -1;
+      render();
+    }, 280);
+  });
+
+  inputEl.addEventListener("keydown", (e) => {
+    if(!boxEl.classList.contains("show") || items.length === 0) return;
+    if(e.key === "ArrowDown"){ e.preventDefault(); hlIndex = Math.min(hlIndex+1, items.length-1); render(); }
+    else if(e.key === "ArrowUp"){ e.preventDefault(); hlIndex = Math.max(hlIndex-1, 0); render(); }
+    else if(e.key === "Enter"){ e.preventDefault(); if(hlIndex>=0) select(items[hlIndex]); }
+    else if(e.key === "Escape"){ boxEl.classList.remove("show"); }
+  });
+
+  document.addEventListener("click", (e) => {
+    if(!boxEl.contains(e.target) && e.target !== inputEl) boxEl.classList.remove("show");
+  });
+}
+
+/* ========= FORM: PRODUTO PRINCIPAL ========= */
+attachAutocomplete(
+  document.getElementById("fCodigoBusca"),
+  document.getElementById("acProduto"),
+  (item) => {
+    produtoAtual = item;
+    document.getElementById("fCodigoBusca").value = "";
+    document.getElementById("selNomeProduto").textContent = `#${item.codigo} — ${item.nome}`;
+    document.getElementById("selectedProdutoBox").classList.add("show");
+  }
+);
+document.getElementById("btnLimparProduto").onclick = () => {
+  produtoAtual = null;
+  document.getElementById("selectedProdutoBox").classList.remove("show");
+};
+
+/* ========= FORM: SUBSTITUTOS (multi) ========= */
+function renderSubstitutosForm(){
+  const wrap = document.getElementById("substitutosContainer");
+  if(substitutosForm.length === 0){
+    wrap.innerHTML = `<div style="font-size:12.5px;color:var(--text-dim);">Nenhum substituto adicionado.</div>`;
+    return;
+  }
+  wrap.innerHTML = substitutosForm.map((s, i) => `
+    <div class="sub-chip">
+      <span><span class="c">#${escapeHtml(s.codigo)}</span> ${escapeHtml(s.nome)}</span>
+      <button data-i="${i}" title="Remover">✕</button>
+    </div>
+  `).join("");
+  wrap.querySelectorAll("button").forEach(btn => {
+    btn.onclick = () => { substitutosForm.splice(+btn.dataset.i, 1); renderSubstitutosForm(); };
+  });
+}
+renderSubstitutosForm();
+
+document.getElementById("btnAddSubstituto").onclick = () => {
+  const row = document.createElement("div");
+  row.className = "sub-row";
+  row.innerHTML = `
+    <div class="autocomplete-wrap">
+      <input type="text" placeholder="Digite código ou nome do substituto...">
+      <div class="ac-results"></div>
+    </div>
+    <button class="btn-ghost btn-small remove" type="button">✕</button>
+  `;
+  document.getElementById("btnAddSubstituto").insertAdjacentElement("beforebegin", row);
+  const input = row.querySelector("input");
+  const box = row.querySelector(".ac-results");
+  attachAutocomplete(input, box, (item) => {
+    if(produtoAtual && item.codigo === produtoAtual.codigo){ toast("Substituto não pode ser o mesmo produto.", true); return; }
+    if(substitutosForm.some(s => s.codigo === item.codigo)){ toast("Esse código já foi adicionado.", true); row.remove(); return; }
+    substitutosForm.push(item);
+    renderSubstitutosForm();
+    row.remove();
+  }, () => substitutosForm.map(s => s.codigo));
+  input.focus();
+  row.querySelector(".remove").onclick = () => row.remove();
+};
+
+/* ========= FORM CONDICIONAIS ========= */
+document.getElementById("fTemPrevisao").onchange = e =>
+  document.getElementById("previsaoBox").classList.toggle("show", e.target.checked);
+
+/* ========= SALVAR PRODUTO ========= */
+document.getElementById("btnSalvar").onclick = async () => {
+  if(!produtoAtual){ toast("Selecione o produto pelo código.", true); return; }
+
+  const temPrevisao = document.getElementById("fTemPrevisao").checked;
+
+  const payload = {
+    codigo: produtoAtual.codigo,
+    nome: produtoAtual.nome,
+    situacao: document.getElementById("fSituacao").value,
+    tem_previsao: temPrevisao,
+    data_previsao: temPrevisao ? (document.getElementById("fDataPrevisao").value || null) : null,
+    pre_order: document.getElementById("fPreOrder").checked,
+    codigos_substitutos: substitutosForm,
+    observacao: document.getElementById("fObservacao").value.trim() || null,
+    resolvido: false
+  };
+
+  const btn = document.getElementById("btnSalvar");
+  btn.disabled = true; btn.textContent = "Salvando...";
+  const { error } = await supa.from(T_STATUS).insert(payload);
+
+  btn.disabled = false; btn.textContent = "Adicionar à lista";
+  if(error){ toast("Erro ao salvar: " + error.message, true); return; }
+
+  toast("Produto adicionado.");
+  produtoAtual = null;
+  substitutosForm = [];
+  document.getElementById("selectedProdutoBox").classList.remove("show");
+  renderSubstitutosForm();
+  document.getElementById("fSituacao").value = "baixa";
+  document.getElementById("fTemPrevisao").checked = false;
+  document.getElementById("fPreOrder").checked = false;
+  document.getElementById("previsaoBox").classList.remove("show");
+  document.getElementById("fDataPrevisao").value = "";
+  document.getElementById("fObservacao").value = "";
+};
+
+/* ========= LISTA DE PRODUTOS ATIVOS ========= */
+function renderProdutos(){
+  const wrap = document.getElementById("listaProdutos");
+  const ativos = produtos.filter(p => !p.resolvido);
+
+  if(ativos.length === 0){
+    wrap.innerHTML = `<div class="empty">Nenhum produto em baixa ou zerado no momento.</div>`;
+    updatePreview();
+    return;
+  }
+
+  wrap.innerHTML = ativos.map(p => {
+    const checked = selectedProdutos.has(p.id) ? "checked" : "";
+    const sitLabel = p.situacao === "zerado" ? "Zerado" : "Baixo estoque";
+    const previsaoTxt = p.tem_previsao && p.data_previsao ? fmtData(p.data_previsao) : "Sem reposição";
+    const subs = (p.codigos_substitutos || []);
+    const subsTxt = subs.length ? subs.map(s => `#${s.codigo} ${s.nome}`).join(", ") : null;
+    return `
+    <div class="product">
+      <input type="checkbox" data-id="${p.id}" class="chkProduto" ${checked}>
+      <div class="body">
+        <div class="top">
+          <span class="nome">${escapeHtml(p.nome)}</span>
+          <span class="codigo mono">#${escapeHtml(p.codigo)}</span>
+          <span class="badge ${p.situacao}">${sitLabel}</span>
+          <span class="badge ${p.pre_order ? "pre-ok" : "pre-no"}">${p.pre_order ? "Pré-order OK" : "Sem pré-order"}</span>
+        </div>
+        <div class="meta-line"><b>Previsão de chegada:</b> ${previsaoTxt}</div>
+        ${subsTxt ? `<div class="meta-line"><b>Substituto(s):</b> ${escapeHtml(subsTxt)}</div>` : ""}
+        ${p.observacao ? `<div class="meta-line">${escapeHtml(p.observacao)}</div>` : ""}
+      </div>
+      <div class="actions">
+        <button class="btn-ghost" data-resolve="${p.id}">Resolvido</button>
+        <button class="btn-danger-ghost" data-delete="${p.id}">Excluir</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  wrap.querySelectorAll(".chkProduto").forEach(chk => {
+    chk.onchange = () => { chk.checked ? selectedProdutos.add(chk.dataset.id) : selectedProdutos.delete(chk.dataset.id); updatePreview(); };
+  });
+  wrap.querySelectorAll("[data-resolve]").forEach(btn => {
+    btn.onclick = async () => {
+      const { error } = await supa.from(T_STATUS).update({ resolvido: true }).eq("id", btn.dataset.resolve);
+      toast(error ? "Erro: " + error.message : "Marcado como resolvido.", !!error);
+    };
+  });
+  wrap.querySelectorAll("[data-delete]").forEach(btn => {
+    btn.onclick = async () => {
+      if(!confirm("Excluir esse produto da lista?")) return;
+      const { error } = await supa.from(T_STATUS).delete().eq("id", btn.dataset.delete);
+      toast(error ? "Erro: " + error.message : "Excluído.", !!error);
+    };
+  });
+
+  updatePreview();
+}
+
+document.getElementById("selectAllProdutos").onclick = () => {
+  const ativos = produtos.filter(p => !p.resolvido);
+  const allSelected = ativos.every(p => selectedProdutos.has(p.id));
+  if(allSelected) selectedProdutos.clear(); else ativos.forEach(p => selectedProdutos.add(p.id));
+  renderProdutos();
+};
+
+/* ========= LISTA DE LOJAS ========= */
+function renderLojas(){
+  const wrap = document.getElementById("listaLojas");
+  wrap.innerHTML = LOJAS.map(([jid, nome]) => `
+    <label class="store-item">
+      <input type="checkbox" class="chkLoja" data-jid="${jid}">
+      <span>${escapeHtml(nome)}</span>
+    </label>`).join("");
+  wrap.querySelectorAll(".chkLoja").forEach(chk => {
+    chk.onchange = () => { chk.checked ? selectedLojas.add(chk.dataset.jid) : selectedLojas.delete(chk.dataset.jid); updatePreview(); };
+  });
+}
+renderLojas();
+
+document.getElementById("selectAllLojas").onclick = () => {
+  const wrap = document.getElementById("listaLojas");
+  const allSelected = LOJAS.every(([jid]) => selectedLojas.has(jid));
+  wrap.querySelectorAll(".chkLoja").forEach(chk => {
+    chk.checked = !allSelected;
+    allSelected ? selectedLojas.delete(chk.dataset.jid) : selectedLojas.add(chk.dataset.jid);
+  });
+  updatePreview();
+};
+
+/* ========= MENSAGEM ========= */
+function buildMessage(){
+  const selecionados = produtos.filter(p => selectedProdutos.has(p.id));
+  if(selecionados.length === 0) return "";
+
+  let msg = "🔴 *ATUALIZAÇÃO DE ESTOQUE*\n\n";
+  msg += selecionados.map(p => {
+    const sit = p.situacao === "zerado" ? "ZERADO" : "BAIXO ESTOQUE";
+    const previsao = p.tem_previsao && p.data_previsao ? fmtData(p.data_previsao) : "SEM REPOSIÇÃO";
+    const preOrder = p.pre_order ? "Disponível" : "Indisponível";
+    const subs = (p.codigos_substitutos || []);
+    const substituto = subs.length ? subs.map(s => `${s.codigo} – ${s.nome}`).join("; ") : "Nenhum";
+    let bloco = `🔖 *Código:* ${p.codigo} – ${p.nome}\n`;
+    bloco += `⚠️ *Situação:* ${sit}\n`;
+    bloco += `📅 *Previsão de chegada:* ${previsao}\n`;
+    bloco += `🔄 *Pré-order:* ${preOrder}\n`;
+    bloco += `➡️ *Substituto(s):* ${substituto}`;
+    if(p.observacao) bloco += `\n📝 ${p.observacao}`;
+    return bloco;
+  }).join("\n\n➖➖➖➖➖➖➖➖➖\n\n");
+
+  return msg;
+}
+
+function updatePreview(){
+  const msg = buildMessage();
+  document.getElementById("preview").textContent = msg;
+  const btn = document.getElementById("btnEnviar");
+  btn.disabled = !(msg && selectedLojas.size > 0);
+  document.getElementById("sendSummary").innerHTML = msg
+    ? `<b>${selectedProdutos.size}</b> produto(s) · <b>${selectedLojas.size}</b> loja(s) selecionada(s)`
+    : "";
+}
+
+/* ========= ENVIO ========= */
+document.getElementById("btnEnviar").onclick = async () => {
+  const msg = buildMessage();
+  const jids = Array.from(selectedLojas);
+  if(!msg || jids.length === 0) return;
+
+  const btn = document.getElementById("btnEnviar");
+  btn.disabled = true;
+  let ok = 0, fail = 0;
+
+  for(const jid of jids){
+    btn.textContent = `Enviando... (${ok+fail+1}/${jids.length})`;
+    try{
+      const res = await fetch(`${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "apikey": EVOLUTION_APIKEY },
+        body: JSON.stringify({ number: jid, text: msg })
+      });
+      if(res.ok) ok++; else fail++;
+    }catch(e){ fail++; }
+    await new Promise(r => setTimeout(r, 350));
+  }
+
+  btn.textContent = "Enviar para lojas selecionadas";
+  btn.disabled = false;
+  toast(fail === 0 ? `Enviado para ${ok} loja(s).` : `${ok} enviado(s), ${fail} falharam.`, fail > 0);
+};
+
+/* ========= SUPABASE: LOAD + REALTIME (produtos_status) ========= */
+async function loadProdutos(){
+  const { data, error } = await supa.from(T_STATUS).select("*").order("created_at", { ascending: false });
+  if(error){ toast("Erro ao carregar: " + error.message, true); return; }
+  produtos = data || [];
+  renderProdutos();
+}
+supa.channel("produtos_status_changes")
+  .on("postgres_changes", { event: "*", schema: "public", table: T_STATUS }, () => loadProdutos())
+  .subscribe();
+loadProdutos();
+
+/* ================================================================
+   VIEW: SUBSTITUTOS (menu de vínculos persistentes)
+   ================================================================ */
+let produtoSub = null;
+
+attachAutocomplete(
+  document.getElementById("fCodigoBuscaSub"),
+  document.getElementById("acProdutoSub"),
+  (item) => {
+    produtoSub = item;
+    document.getElementById("fCodigoBuscaSub").value = "";
+    document.getElementById("selNomeProdutoSub").textContent = `#${item.codigo} — ${item.nome}`;
+    document.getElementById("selectedProdutoSubBox").classList.add("show");
+    document.getElementById("cardSubstitutosLista").style.display = "block";
+    loadSubstitutosVinculados();
+  }
+);
+document.getElementById("btnLimparProdutoSub").onclick = () => {
+  produtoSub = null;
+  document.getElementById("selectedProdutoSubBox").classList.remove("show");
+  document.getElementById("cardSubstitutosLista").style.display = "none";
+};
+
+async function loadSubstitutosVinculados(){
+  if(!produtoSub) return;
+  const { data, error } = await supa
+    .from(T_SUBSTITUTOS)
+    .select("id, codigo_substituto, catalogo_produtos!produto_substitutos_codigo_substituto_fkey(nome)")
+    .eq("codigo_produto", produtoSub.codigo);
+  const wrap = document.getElementById("listaSubstitutosVinculados");
+  if(error){ wrap.innerHTML = `<div class="empty">Erro ao carregar.</div>`; return; }
+  if(!data || data.length === 0){ wrap.innerHTML = `<div class="empty">Nenhum substituto vinculado ainda.</div>`; return; }
+  wrap.innerHTML = data.map(r => `
+    <div class="link-item">
+      <div class="info"><span class="c mono">#${escapeHtml(r.codigo_substituto)}</span> ${escapeHtml(r.catalogo_produtos ? r.catalogo_produtos.nome : "")}</div>
+      <button class="btn-danger-ghost btn-small" data-id="${r.id}">Remover</button>
+    </div>`).join("");
+  wrap.querySelectorAll("button[data-id]").forEach(btn => {
+    btn.onclick = async () => {
+      const { error } = await supa.from(T_SUBSTITUTOS).delete().eq("id", btn.dataset.id);
+      toast(error ? "Erro: " + error.message : "Removido.", !!error);
+      loadSubstitutosVinculados();
+    };
+  });
+}
+
+attachAutocomplete(
+  document.getElementById("fNovoSubstituto"),
+  document.getElementById("acNovoSubstituto"),
+  async (item) => {
+    if(!produtoSub) return;
+    if(item.codigo === produtoSub.codigo){ toast("Não pode vincular o produto a ele mesmo.", true); return; }
+    const { error } = await supa.from(T_SUBSTITUTOS)
+      .upsert({ codigo_produto: produtoSub.codigo, codigo_substituto: item.codigo }, { onConflict: "codigo_produto,codigo_substituto" });
+    document.getElementById("fNovoSubstituto").value = "";
+    if(error){ toast("Erro: " + error.message, true); return; }
+    toast("Substituto vinculado.");
+    loadSubstitutosVinculados();
+  }
+);
+
+supa.channel("produto_substitutos_changes")
+  .on("postgres_changes", { event: "*", schema: "public", table: T_SUBSTITUTOS }, () => { if(produtoSub) loadSubstitutosVinculados(); })
+  .subscribe();
+</script>
+</body>
+</html>
