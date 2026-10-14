@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light" data-v="B">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informativo de Estoque — VX Case</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231B1D1A'/%3E%3Ccircle cx='50' cy='38' r='14' fill='%23E56F65'/%3E%3Crect x='28' y='60' width='44' height='8' rx='4' fill='%23EDEBE4'/%3E%3Crect x='28' y='74' width='30' height='8' rx='4' fill='%2397958C'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root[data-theme="light"]{--bg:#F3F1EA;--surface:#fff;--surface-2:#FAF8F3;--text:#1B1D1A;--text-dim:#6B6A63;--border:#DEDAD0;--baixa:#B3690F;--baixa-bg:#FBEEDD;--zerado:#A62A22;--zerado-bg:#FBE7E4;--ok:#2E6B49;--ok-bg:#E4F0E9;--danger:#A62A22;--wa:#DCF8C6;--wa-text:#1B1D1A;--shadow:0 1px 2px rgba(20,20,15,.06),0 4px 14px rgba(20,20,15,.05);}
+:root[data-theme="dark"]{--bg:#15171A;--surface:#1D2023;--surface-2:#21262A;--text:#EDEBE4;--text-dim:#97958C;--border:#2E3236;--baixa:#E3A24C;--baixa-bg:#332617;--zerado:#E56F65;--zerado-bg:#35201E;--ok:#5FBE8B;--ok-bg:#1B2B22;--danger:#E56F65;--wa:#1F3B2D;--wa-text:#EDEBE4;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;transition:background .2s,color .2s;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+button{font-family:inherit;font-weight:700;font-size:13.5px;border:none;border-radius:9px;padding:11px 16px;cursor:pointer;transition:.12s ease;color:inherit;}
+.hidden{display:none!important;}
+
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:30;}
+.brand{display:flex;align-items:center;gap:12px;}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--text);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:17px;}
+.brand h1{font-size:16px;font-weight:800;margin:0;letter-spacing:-.01em;}
+.brand small{display:block;font-size:11.5px;color:var(--text-dim);font-weight:500;margin-top:1px;}
+.theme-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;border:1px solid var(--border);background:var(--surface);padding:7px 12px;border-radius:20px;font-size:13px;font-weight:500;color:var(--text-dim);}
+.theme-toggle:hover{color:var(--text);}
+
+.tabs{display:flex;gap:4px;padding:6px 28px 0;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:63px;z-index:29;}
+.tab-btn{background:none;padding:10px 16px;font-size:13.5px;font-weight:600;color:var(--text-dim);border-radius:0;border-bottom:2px solid transparent;display:flex;align-items:center;gap:8px;}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--text);}
+.tab-btn .n{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--surface-2);border:1px solid var(--border);border-radius:99px;padding:0 7px;color:var(--text-dim);}
+.view{display:none;}.view.active{display:block;}
+
+main{max-width:1240px;margin:0 auto;padding:26px 28px 60px;display:grid;grid-template-columns:380px 1fr;gap:22px;align-items:start;}
+@media(max-width:960px){main{grid-template-columns:1fr;}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:var(--shadow);}
+.card+.card{margin-top:18px;}
+.card h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin:0 0 16px;font-weight:700;}
+label{display:block;font-size:12.5px;font-weight:600;margin:14px 0 6px;color:var(--text-dim);}
+label.first{margin-top:0;}
+input[type=text],input[type=search],input[type=date],select,textarea{width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-family:inherit;font-size:14px;}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--text-dim);outline-offset:1px;}
+textarea{resize:vertical;min-height:52px;}
+
+.autocomplete-wrap{position:relative;}
+.ac-results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:9px;box-shadow:var(--shadow);max-height:220px;overflow-y:auto;z-index:40;display:none;}
+.ac-results.show{display:block;}
+.ac-item{padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.hl{background:var(--surface-2);}
+.ac-item .c{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:11.5px;color:var(--text-dim);}
+.ac-empty{padding:10px 12px;font-size:12.5px;color:var(--text-dim);}
+.selected-produto{margin-top:8px;padding:10px 12px;background:var(--ok-bg);border:1px solid var(--ok);border-radius:9px;font-size:13px;display:none;}
+.selected-produto.show{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.selected-produto .nm{color:var(--ok);font-weight:600;}
+.selected-produto button{background:none;color:var(--ok);font-size:12px;text-decoration:underline;padding:0;font-weight:600;}
+
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.seg button{background:var(--surface-2);border:1px solid var(--border);color:var(--text-dim);padding:10px;}
+.seg button.on.baixa{background:var(--baixa-bg);border-color:var(--baixa);color:var(--baixa);}
+.seg button.on.zerado{background:var(--zerado-bg);border-color:var(--zerado);color:var(--zerado);}
+.switch-row{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 12px;background:var(--surface-2);border-radius:9px;border:1px solid var(--border);}
+.switch-row span{font-size:13.5px;font-weight:600;}
+.switch{position:relative;width:40px;height:22px;flex-shrink:0;margin:0;}
+.switch input{opacity:0;width:0;height:0;}
+.slider{position:absolute;inset:0;background:var(--border);border-radius:20px;cursor:pointer;transition:.15s;}
+.slider:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:var(--surface);border-radius:50%;transition:.15s;}
+input:checked+.slider{background:var(--ok);}
+input:checked+.slider:before{transform:translateX(18px);}
+.conditional{display:none;}.conditional.show{display:block;}
+
+.btn-primary{background:var(--text);color:var(--bg);width:100%;margin-top:18px;}
+.btn-primary:hover{opacity:.88;}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border);}
+.btn-ghost:hover{color:var(--text);border-color:var(--text-dim);}
+.btn-danger-ghost{background:transparent;color:var(--danger);border:1px solid var(--zerado-bg);}
+.btn-danger-ghost:hover{background:var(--zerado-bg);}
+.btn-small{padding:7px 10px;font-size:12px;}
+.sub-row{display:flex;gap:8px;margin-bottom:8px;}.sub-row .autocomplete-wrap{flex:1;}
+.sub-chip{font-size:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:6px 9px;margin-bottom:5px;display:flex;justify-content:space-between;gap:8px;}
+.sub-chip .c{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--text-dim);}
+.sub-chip button{background:none;color:var(--danger);font-size:14px;padding:0;line-height:1;}
+
+.list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;}
+.list-header h2{margin:0;}
+.link{font-size:12px;color:var(--text-dim);cursor:pointer;font-weight:600;}
+.link:hover{color:var(--text);}
+.product{border:1px solid var(--border);border-left:4px solid var(--border);border-radius:11px;padding:14px 16px;margin-bottom:10px;background:var(--surface-2);display:flex;gap:12px;align-items:flex-start;}
+.product.baixa{border-left-color:var(--baixa);}.product.zerado{border-left-color:var(--zerado);}
+.product input[type=checkbox]{margin-top:3px;width:17px;height:17px;accent-color:var(--text);}
+.product .body{flex:1;min-width:0;}
+.product .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+.product .nome{font-weight:700;font-size:14.5px;}
+.product .codigo{font-size:12.5px;color:var(--text-dim);}
+.badge{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:3px 8px;border-radius:5px;white-space:nowrap;}
+.badge.baixa{background:var(--baixa-bg);color:var(--baixa);}.badge.zerado{background:var(--zerado-bg);color:var(--zerado);}
+.badge.pre-ok{background:var(--ok-bg);color:var(--ok);}
+.badge.pre-no{background:var(--surface);color:var(--text-dim);border:1px solid var(--border);}
+.badge.sent{background:var(--ok-bg);color:var(--ok);text-transform:none;letter-spacing:0;}
+.meta-line{font-size:12.5px;color:var(--text-dim);margin-top:4px;line-height:1.5;}
+.meta-line b{color:var(--text);font-weight:600;}
+.product .actions{display:flex;gap:6px;flex-shrink:0;}
+.product .actions button{padding:6px 10px;font-size:12px;}
+.empty{text-align:center;padding:36px 20px;color:var(--text-dim);font-size:13.5px;}
+
+.stores-bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.stores-bar input{flex:1;min-width:160px;}
+.stores{max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:6px;background:var(--surface-2);}
+.store-group{display:flex;justify-content:space-between;align-items:center;padding:8px 8px 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);}
+.store-item{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:7px;font-size:13px;cursor:pointer;margin:0;color:var(--text);font-weight:500;}
+.store-item:hover{background:var(--surface);}
+.store-item input{accent-color:var(--text);}
+.wa{background:var(--wa);color:var(--wa-text);border-radius:4px 14px 14px 14px;padding:12px 14px;font-size:13px;line-height:1.55;white-space:pre-wrap;max-height:300px;overflow:auto;box-shadow:0 1px 1px rgba(0,0,0,.08);}
+.wa:empty:before{content:"Selecione produtos e lojas pra ver a prévia.";color:var(--text-dim);}
+.send-summary{font-size:12.5px;color:var(--text-dim);margin-top:10px;}
+.send-summary b{color:var(--text);}
+.progress{height:6px;background:var(--border);border-radius:9px;overflow:hidden;margin-top:12px;display:none;}
+.progress.show{display:block;}.progress>i{display:block;height:100%;width:0;background:var(--ok);transition:width .2s;}
+.result{margin-top:12px;padding:12px 14px;border-radius:10px;font-size:13px;display:none;}
+.result.show{display:block;}.result.ok{background:var(--ok-bg);color:var(--ok);}.result.bad{background:var(--zerado-bg);color:var(--zerado);}
+.result button{margin-top:8px;background:var(--text);color:var(--bg);padding:7px 12px;font-size:12px;}
+
+/* histórico */
+.hist{max-width:1240px;margin:0 auto;padding:26px 28px 60px;}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr);}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);}
+.kpi b{display:block;font-size:26px;font-weight:800;letter-spacing:-.02em;}
+.kpi span{font-size:12px;color:var(--text-dim);font-weight:500;}
+.toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.toolbar input{flex:1;min-width:220px;}.toolbar select{width:auto;}
+.hrow{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;}
+.hhead{display:grid;grid-template-columns:minmax(0,1fr) 110px 90px 150px 24px;gap:14px;align-items:center;padding:13px 16px;cursor:pointer;}
+.hhead:hover{background:var(--surface-2);}
+.hhead .nm{font-weight:700;font-size:14px;}.hhead .nm small{display:block;font-weight:500;color:var(--text-dim);font-size:12px;margin-top:2px;}
+.hhead .num{font-size:13px;color:var(--text-dim);}.hhead .num b{color:var(--text);font-size:15px;}
+.hhead .chev{color:var(--text-dim);transition:transform .15s;}
+.hrow.open .chev{transform:rotate(90deg);}
+.hhead .chev{text-align:center;}
+.hbody{display:none;border-top:1px solid var(--border);background:var(--surface-2);padding:6px 16px 14px;}
+.hrow.open .hbody{display:block;}
+.send{padding:12px 0;border-bottom:1px dashed var(--border);}
+.send:last-child{border-bottom:0;}
+.send-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13px;}
+.send-top .when{font-weight:700;}
+.send-top .meta{color:var(--text-dim);}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.chip{font-size:11.5px;padding:3px 8px;border-radius:99px;background:var(--surface);border:1px solid var(--border);color:var(--text-dim);}
+.chip.fail{background:var(--zerado-bg);color:var(--zerado);border-color:transparent;}
+@media(max-width:760px){.hhead{grid-template-columns:minmax(0,1fr) 24px;}.hhead .num{display:none;}}
+
+/* substitutos */
+.sub-main{max-width:640px;margin:0 auto;padding:28px;}
+.link-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);margin-bottom:8px;}
+.link-item .info{font-size:13.5px;}.link-item .info .c{font-family:'IBM Plex Mono',monospace;color:var(--text-dim);font-size:11.5px;margin-right:6px;}
+
+/* modal confirmação */
+.overlay{position:fixed;inset:0;background:rgba(10,10,8,.55);display:none;align-items:center;justify-content:center;z-index:60;padding:20px;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:520px;max-height:86vh;display:flex;flex-direction:column;box-shadow:var(--shadow);}
+.modal-hd{padding:18px 20px 10px;font-weight:800;font-size:16px;}
+.modal-bd{padding:0 20px;overflow:auto;font-size:13.5px;}
+.modal-bd ul{margin:6px 0 12px;padding-left:18px;color:var(--text-dim);}.modal-bd li{margin:3px 0;}
+.modal-ft{display:flex;gap:10px;justify-content:flex-end;padding:14px 20px 18px;}
+.modal-ft .btn-primary{width:auto;margin:0;}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:12px 20px;border-radius:9px;font-size:13.5px;font-weight:600;box-shadow:var(--shadow);opacity:0;transition:.2s;pointer-events:none;z-index:80;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.error{background:var(--danger);color:#fff;}
+
+/* ===== LAYOUT ORGANIZADO (tudo alinhado e centralizado) ===== */
+.tabs{justify-content:center;}
+.page{max-width:1640px;margin:0 auto;padding:26px 28px 60px;}
+.card h2{text-align:center;}
+.list-header{position:relative;justify-content:center;}
+.list-header .link{position:absolute;right:0;top:50%;transform:translateY(-50%);}
+label{text-align:center;}
+.selected-produto,.selected-produto.show{text-align:center;}
+.selected-produto.show{justify-content:center;gap:14px;}
+.two{display:grid;grid-template-columns:minmax(380px,.8fr) 1.2fr;gap:20px;margin-bottom:20px;align-items:start;}
+@media(max-width:1000px){.two{grid-template-columns:1fr;}}
+.two .card+.card{margin-top:0;}
+.tscroll{overflow-x:auto;padding-bottom:4px;}
+.ptable{min-width:1100px;}
+.prow{display:grid;grid-template-columns:32px 74px minmax(0,1fr) 118px 104px 84px 90px 108px 178px;gap:12px;align-items:center;padding:11px 14px;border:1px solid var(--border);border-left:4px solid var(--border);border-radius:11px;background:var(--surface-2);margin-bottom:8px;text-align:center;}
+.prow.baixa{border-left-color:var(--baixa);}.prow.zerado{border-left-color:var(--zerado);}
+.prow.head{background:none;border:0;border-left:4px solid transparent;padding-top:0;padding-bottom:4px;margin-bottom:2px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-dim);}
+.prow .cell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:1.6;padding:2px 0;}
+.prow .nome{font-weight:700;font-size:12.5px;}
+.prow .codigo{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--text-dim);}
+.prow .dim{color:var(--text-dim);}
+.prow .acts{display:flex;gap:6px;justify-content:center;}
+.prow .acts button{padding:6px 8px;font-size:11.5px;}
+.prow input[type=checkbox]{width:17px;height:17px;accent-color:var(--text);margin:0;}
+.kpi{text-align:center;}
+.hist{max-width:1280px;}
+.hgrid{display:grid;grid-template-columns:minmax(0,2.4fr) 92px 124px 84px 140px 92px 24px;gap:14px;align-items:center;text-align:center;}
+.hhead{padding:13px 16px;}
+.hhead.head{background:none;cursor:default;padding:0 16px 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-dim);}
+.hhead.head:hover{background:none;}
+.hhead .cell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;}
+.hhead .nm{font-weight:700;font-size:13.5px;}
+.send-top{justify-content:center;text-align:center;}
+.chips{justify-content:center;}
+.gr-line{font-size:12.5px;font-weight:600;margin-top:8px;}.gr-line.ok{color:var(--ok);}.gr-line.bad{color:var(--zerado);}
+.okgrp{font-weight:700;color:var(--ok);}
+details.full{margin-top:6px;}details.full summary{cursor:pointer;font-size:12px;color:var(--text-dim);font-weight:600;list-style:none;}details.full summary::-webkit-details-marker{display:none;}details.full summary:hover{color:var(--text);}details.full[open] summary{margin-bottom:6px;}
+.send{text-align:center;}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;}
+.store-group{justify-content:center;gap:14px;position:relative;}
+.store-group .link{position:static;}
+.store-item{text-align:left;}
+.link-item{gap:12px;}.link-item .info{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;}
+.empty{text-align:center;}
+.send-summary{text-align:center;}
+.kpis3{grid-template-columns:repeat(3,1fr);}
+.sep{height:1px;background:var(--border);margin:20px 0 16px;}
+.sub-h{font-size:13px;margin:0 0 12px;text-align:center;font-weight:700;display:flex;gap:8px;justify-content:center;align-items:center;}
+.hint{font-size:12px;color:var(--text-dim);text-align:center;margin-top:8px;}
+.sgrid2{display:grid;grid-template-columns:minmax(0,1fr) 110px 24px;gap:14px;align-items:center;text-align:center;}
+.gcod{display:grid;grid-template-columns:84px minmax(0,1fr) 150px;gap:12px;align-items:center;padding:9px 4px;border-bottom:1px dashed var(--border);text-align:center;}
+.gcod:last-child{border-bottom:0;}
+.gcod .cell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;}
+.ac-item .tagsub{float:right;font-size:10.5px;color:var(--ok);font-weight:700;}
+#substitutosContainer{text-align:center;}
+#btnAddSubstituto{display:block;margin:0 auto;}
+#substitutosContainer .sub-chip{text-align:left;}
+.hhead .cell{line-height:1.6;padding:2px 0;}
+@media(max-width:900px){.hist{overflow-x:auto;}#histCab,#histLista,#gCab,#gLista,.kpis,.toolbar{min-width:820px;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="logo">📦</div><div><h1>Informativo de Estoque</h1><small>VX Case · avisos de falta e previsão para as lojas</small></div></div>
+  <div class="theme-toggle" id="themeToggle"><span id="themeIcon">🌙</span><span id="themeLabel">Escuro</span></div>
+</header>
+<nav class="tabs">
+  <button class="tab-btn active" data-view="viewInformativo">Informativo <span class="n" id="nAtivos">0</span></button>
+  <button class="tab-btn" data-view="viewHistorico">Histórico <span class="n" id="nHist">0</span></button>
+  <button class="tab-btn" data-view="viewSubstitutos">Substitutos</button>
+</nav>
+<div class="content">
+
+<div class="view active" id="viewInformativo">
+<div class="page">
+  <div class="two">
+    <div class="card" id="cardForm">
+      <h2 id="formTitulo">Cadastrar produto</h2>
+      <label class="first">Código do produto</label>
+      <div class="autocomplete-wrap"><input type="text" id="fCodigoBusca" placeholder="Digite código ou nome..."><div class="ac-results" id="acProduto"></div></div>
+      <div class="selected-produto" id="selectedProdutoBox"><span>Selecionado: <span class="c mono" id="selNomeProduto"></span></span><button id="btnLimparProduto">trocar</button></div>
+
+      <label>Situação</label>
+      <div class="seg" id="segSituacao"><button type="button" data-v="baixa" class="on baixa">Baixo estoque</button><button type="button" data-v="zerado">Zerado</button></div>
+
+      <div class="switch-row"><span>Tem previsão de chegada</span><label class="switch"><input type="checkbox" id="fTemPrevisao"><span class="slider"></span></label></div>
+      <div class="conditional" id="previsaoBox"><label>Data prevista</label><input type="date" id="fDataPrevisao"></div>
+      <div class="switch-row"><span>Disponível pra pré-order</span><label class="switch"><input type="checkbox" id="fPreOrder"><span class="slider"></span></label></div>
+
+      <label style="margin-top:16px">Código(s) substituto(s)</label>
+      <div id="substitutosContainer"></div>
+      <button class="btn-ghost btn-small" id="btnAddSubstituto" type="button">+ Adicionar substituto</button>
+      <label>Observação (opcional)</label>
+      <textarea id="fObservacao" placeholder="Detalhe adicional..."></textarea>
+      <button class="btn-primary" id="btnSalvar">Adicionar à lista</button>
+      <button class="btn-ghost hidden" id="btnCancelarEdicao" style="width:100%;margin-top:8px">Cancelar edição</button>
+    </div>
+    <div class="card">
+      <div class="list-header"><h2 style="margin:0">Enviar informativo</h2><span class="link" id="selectAllLojas">selecionar todas</span></div>
+      <div class="stores-bar"><input type="search" id="buscaLoja" placeholder="Buscar loja ou grupo..."></div>
+      <div class="stores" id="listaLojas"></div>
+      <label>Prévia da mensagem</label>
+      <div class="wa" id="preview"></div>
+      <div class="send-summary" id="sendSummary"></div>
+      <button class="btn-primary" id="btnEnviar" disabled>Enviar para lojas selecionadas</button>
+      <div class="progress" id="progress"><i></i></div>
+      <div class="result" id="result"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="list-header"><h2>Produtos ativos</h2><span class="link" id="selectAllProdutos">selecionar todos</span></div>
+    <div class="tscroll"><div class="ptable" id="listaProdutos"></div></div>
+  </div>
+</div>
+</div>
+
+<div class="view" id="viewHistorico">
+  <div class="hist">
+    <div class="kpis" id="histKpis"></div>
+    <div class="toolbar">
+      <input type="search" id="hBusca" placeholder="Buscar por código ou nome do produto...">
+      <select id="hSit"><option value="">Todas as situações</option><option value="zerado">Zerado</option><option value="baixa">Baixo estoque</option></select>
+      <select id="hPer"><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option><option value="0" selected>Todo o período</option></select>
+    </div>
+    <div id="histCab"></div><div id="histLista"></div>
+  </div>
+</div>
+
+<div class="view" id="viewSubstitutos">
+<div class="hist" style="max-width:1100px">
+  <div class="kpis kpis3" id="subKpis"></div>
+  <div class="card" style="max-width:760px;margin:0 auto 20px">
+    <h2>Consultar ou vincular um produto</h2>
+    <label class="first">Código ou nome do produto</label>
+    <div class="autocomplete-wrap"><input type="text" id="fCodigoBuscaSub" placeholder="Digite código ou nome..."><div class="ac-results" id="acProdutoSub"></div></div>
+    <div class="selected-produto" id="selectedProdutoSubBox"><span>Selecionado: <span class="c mono" id="selNomeProdutoSub"></span></span><button id="btnLimparProdutoSub">trocar</button></div>
+    <div id="cardSubstitutosLista" style="display:none">
+      <div class="sep"></div>
+      <h3 class="sub-h">Códigos que substituem esse produto <span id="subCount" class="badge pre-no" style="text-transform:none"></span></h3>
+      <div id="listaSubstitutosVinculados"></div>
+      <label>Adicionar novo código substituto</label>
+      <div class="autocomplete-wrap"><input type="text" id="fNovoSubstituto" placeholder="Digite código ou nome..."><div class="ac-results" id="acNovoSubstituto"></div></div>
+      <div class="hint">O vínculo vale nos dois sentidos e junta todos os códigos que já são substitutos entre si.</div>
+    </div>
+  </div>
+  <div class="toolbar"><input type="search" id="gBusca" placeholder="Buscar nos grupos de substituição por código ou nome..."></div>
+  <div id="gCab"></div><div id="gLista"></div>
+</div>
+</div>
+
+<div class="overlay" id="overlayConf"><div class="modal"><div class="modal-hd">Confirmar envio</div><div class="modal-bd" id="confBody"></div>
+  <div class="modal-ft"><button class="btn-ghost" id="confNao">Voltar</button><button class="btn-primary" id="confSim">Enviar agora</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ========= CONFIG ========= */
+const SUPABASE_URL = "https://fevhyllvfhvzzfhwyjuk.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZldmh5bGx2Zmh2enpmaHd5anVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzEyMTcsImV4cCI6MjA5NDQ0NzIxN30.GJRgEKW1bVWX1957_bKCTO6aVmR_rXWRCmo9-ZJDPiE";
+const EVOLUTION_URL = "https://evolution.vxcase.com.br";
+const EVOLUTION_INSTANCE = "FARDAMENTOS";
+const EVOLUTION_APIKEY = "B168AAC08A5E-467D-A691-54F427D6D4E8";
+
+const LOJAS = [
+  ["557199847870-1513634147@g.us","ESTOQUE X ARACAJU RIOMAR"],
+  ["557199847870-1513720546@g.us","ESTOQUE X BELA VISTA"],
+  ["120363046934340487@g.us","ESTOQUE X BH DEL REY"],
+  ["120363082143579749@g.us","ESTOQUE X BH SAVASSI"],
+  ["557199847870-1515418514@g.us","ESTOQUE X ESPÍRITO SANTO"],
+  ["557199847870-1513727862@g.us","ESTOQUE X FEIRA DE SANTANA"],
+  ["557199847870-1508792377@g.us","ESTOQUE X FORTALEZA IGUATEMI"],
+  ["120363146598665342@g.us","ESTOQUE X FORTALEZA RIOMAR"],
+  ["557199847870-1513633579@g.us","ESTOQUE X GOIÂNIA FLAMBOYANT"],
+  ["557199847870-1543280119@g.us","ESTOQUE X MACEIÓ SHOPPING"],
+  ["557199847870-1525840710@g.us","ESTOQUE X NITERÓI SHOPPING"],
+  ["120363313739059909@g.us","ESTOQUE X PARKSHOPPING BRASÍLIA"],
+  ["120363276816324109@g.us","ESTOQUE X PARQUE SHOPPING BELÉM"],
+  ["558282359991-1493325321@g.us","ESTOQUE X PARQUE SHOPPING MACEIÓ"],
+  ["557199847870-1530470534@g.us","ESTOQUE X RECIFE RIOMAR"],
+  ["120363402152307961@g.us","ESTOQUE X RIO DE JANEIRO LOJA 106"],
+  ["120363400706297072@g.us","ESTOQUE X RIO DE JANEIRO LOJA 248/A"],
+  ["120363416475579667@g.us","ESTOQUE X RIO DE JANEIRO QUIOSQUE P12"],
+  ["120363400734536578@g.us","ESTOQUE X RIO DE JANEIRO QUIOSQUE P39"],
+  ["557183952662-1595553346@g.us","ESTOQUE X SALVADOR FASHION"],
+  ["557199847870-1543339486@g.us","ESTOQUE X SALVADOR MEGA STORE"],
+  ["557199847870-1513727266@g.us","ESTOQUE X SALVADOR NORTE"],
+  ["557199847870-1543437138@g.us","ESTOQUE X SALVADOR Q ANDROID"],
+  ["557199847870-1543436852@g.us","ESTOQUE X SALVADOR QUIOSQUE BE"],
+  ["557199847870-1543436422@g.us","ESTOQUE X SALVADOR QUIOSQUE IPHONE"],
+  ["557199847870-1513727812@g.us","ESTOQUE X SHOPPING BARRA"],
+  ["120363424747979101@g.us","ESTOQUE X SHOPPING DA BAHIA LOJA 24"],
+  ["120363425667339730@g.us","ESTOQUE X SHOPPING DA BAHIA LOJA 32"],
+  ["557199847870-1513727372@g.us","ESTOQUE X SHOPPING PARALELA"],
+  ["558182154402-1417545211@g.us","ESTOQUE X SHOPPING RECIFE"],
+  ["557191188977-1631733556@g.us","FARDAMENTO RH X ESTOQUE"],
+  ["120363276768615126@g.us","RC9 X BARUERI TAMBORÉ"],
+  ["559192442055-1496446314@g.us","RC9 X BELÉM BOULEVARD"],
+  ["120363026668592251@g.us","RC9 X BH BOULEVARD"],
+  ["120363270105189170@g.us","RC9 X BH DIAMOND MALL"],
+  ["120363183913500022@g.us","RC9 X BOTAFOGO"],
+  ["120363423144923019@g.us","RC9 X CAMPINAS DOM PEDRO"],
+  ["557199847870-1524681160@g.us","RC9 X CONQUISTA"],
+  ["557199847870-1611604025@g.us","RC9 X GOIÂNIA SHOPPING"],
+  ["120363329742982545@g.us","RC9 X MANAUS AMAZONAS"],
+  ["557199847870-1513634378@g.us","RC9 X MANAUS MANAUARA"],
+  ["120363276112192310@g.us","RC9 X NATAL MIDWAY"],
+  ["557199847870-1513634228@g.us","RC9 X NATAL SHOPPING"],
+  ["557196993001-1584364157@g.us","RC9 X PARQUE SHOPP BAHIA"],
+  ["558182887000-1473531782@g.us","RC9 X RIO DE JANEIRO"],
+  ["120363420094103882@g.us","RC9 X RIO DE JANEIRO LOJA SUL"],
+  ["120363337254500707@g.us","RC9 X RJ DESIGN BARRA Q 3F"],
+  ["557199847870-1543436785@g.us","RC9 X SALVADOR MINI MEGA"],
+  ["557199847870-1513727432@g.us","RC9 X SHOPPING DA BAHIA"],
+  ["120363407234683597@g.us","RC9 X SHOPPING DA BAHIA LOJA 36"],
+  ["120363422798671685@g.us","RC9 X SHOPPING DA BAHIA QUIOSQUE"],
+  ["120363030096815008@g.us","RC9 X TIJUCA QUIOSQUE"],
+];
+
+const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const T_STATUS = "produtos_status", T_CATALOGO = "catalogo_produtos", T_SUBSTITUTOS = "produto_substitutos", T_HIST = "informativo_historico";
+const $ = id => document.getElementById(id);
+
+let produtos = [], historico = [];
+let selectedProdutos = new Set(), selectedLojas = new Set();
+let produtoAtual = null, substitutosForm = [], editandoId = null, situacaoForm = "baixa";
+let ultimoEnvio = null;   // {lote, produtos, falhas:[jid]}
+
+/* ========= UTIL ========= */
+const root = document.documentElement;
+function escapeHtml(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+function fmtData(d){ if(!d) return null; const [y,m,day] = String(d).slice(0,10).split("-"); return `${day}/${m}/${y}`; }
+function fmtDH(iso){ const d = new Date(iso); return d.toLocaleDateString("pt-BR") + " às " + d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}); }
+const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+function toast(msg, isError){ const el = $("toast"); el.textContent = msg; el.className = "toast show" + (isError ? " error" : ""); setTimeout(() => el.classList.remove("show"), 3200); }
+const novoLote = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+
+/* ========= ABAS ========= */
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    btn.classList.add("active"); $(btn.dataset.view).classList.add("active");
+    if(btn.dataset.view === "viewHistorico") loadHistorico();
+  };
+});
+
+/* ========= TEMA ========= */
+function applyTheme(t){
+  root.setAttribute("data-theme", t);
+  $("themeIcon").textContent = t === "light" ? "🌙" : "☀️";
+  $("themeLabel").textContent = t === "light" ? "Escuro" : "Claro";
+  try{ localStorage.setItem("estoque_theme", t); }catch(e){}
+}
+let _t = null; try{ _t = localStorage.getItem("estoque_theme"); }catch(e){}
+applyTheme(_t || "light");
+$("themeToggle").onclick = () => applyTheme(root.getAttribute("data-theme") === "light" ? "dark" : "light");
+
+/* ========= AUTOCOMPLETE ========= */
+function attachAutocomplete(inputEl, boxEl, onSelect, excludeCodesFn, extraFn){
+  let timer = null, items = [], hlIndex = -1;
+  function render(){
+    if(items.length === 0) boxEl.innerHTML = `<div class="ac-empty">Nenhum resultado.</div>`;
+    else {
+      boxEl.innerHTML = items.map((it, i) => `<div class="ac-item ${i===hlIndex?'hl':''}" data-i="${i}"><span class="c">#${escapeHtml(it.codigo)}</span> — ${escapeHtml(it.nome)}${extraFn ? extraFn(it) : ""}</div>`).join("");
+      boxEl.querySelectorAll(".ac-item").forEach(el => { el.onclick = () => select(items[+el.dataset.i]); });
+    }
+    boxEl.classList.add("show");
+  }
+  function select(item){ onSelect(item); boxEl.classList.remove("show"); items = []; }
+  inputEl.addEventListener("input", () => {
+    const q = inputEl.value.trim().replace(/[,()]/g, " ");
+    clearTimeout(timer);
+    if(q.length < 2){ boxEl.classList.remove("show"); return; }
+    timer = setTimeout(async () => {
+      const exclude = excludeCodesFn ? excludeCodesFn() : [];
+      const { data, error } = await supa.from(T_CATALOGO).select("codigo,nome").or(`codigo.ilike.%${q}%,nome.ilike.%${q}%`).limit(10);
+      if(error){ boxEl.innerHTML = `<div class="ac-empty">Erro na busca.</div>`; boxEl.classList.add("show"); return; }
+      items = (data || []).filter(it => !exclude.includes(it.codigo)); hlIndex = -1; render();
+    }, 280);
+  });
+  inputEl.addEventListener("keydown", e => {
+    if(!boxEl.classList.contains("show") || items.length === 0) return;
+    if(e.key === "ArrowDown"){ e.preventDefault(); hlIndex = Math.min(hlIndex+1, items.length-1); render(); }
+    else if(e.key === "ArrowUp"){ e.preventDefault(); hlIndex = Math.max(hlIndex-1, 0); render(); }
+    else if(e.key === "Enter"){ e.preventDefault(); select(items[hlIndex >= 0 ? hlIndex : 0]); }
+    else if(e.key === "Escape") boxEl.classList.remove("show");
+  });
+  document.addEventListener("click", e => { if(!boxEl.contains(e.target) && e.target !== inputEl) boxEl.classList.remove("show"); });
+}
+
+/* ========= FORM ========= */
+attachAutocomplete($("fCodigoBusca"), $("acProduto"), item => {
+  produtoAtual = item; $("fCodigoBusca").value = "";
+  $("selNomeProduto").textContent = `#${item.codigo} — ${item.nome}`; $("selectedProdutoBox").classList.add("show");
+  // preenche os substitutos já cadastrados no menu Substitutos (só se ainda não há nenhum no formulário)
+  if(!editandoId && !substitutosForm.length){
+    const cods = (typeof links !== "undefined" ? links : []).filter(l => l.codigo_produto === item.codigo).map(l => l.codigo_substituto);
+    if(cods.length){ substitutosForm = cods.map(c => ({ codigo: c, nome: (typeof nomes !== "undefined" && nomes[c]) || "" })); renderSubstitutosForm(); toast(cods.length + " substituto(s) preenchido(s) do cadastro."); }
+  }
+});
+$("btnLimparProduto").onclick = () => { produtoAtual = null; $("selectedProdutoBox").classList.remove("show"); };
+function setSituacao(v){ situacaoForm = v; document.querySelectorAll("#segSituacao button").forEach(b => b.className = b.dataset.v === v ? "on " + v : ""); }
+document.querySelectorAll("#segSituacao button").forEach(b => b.onclick = () => setSituacao(b.dataset.v));
+
+function renderSubstitutosForm(){
+  const wrap = $("substitutosContainer");
+  if(!substitutosForm.length){ wrap.innerHTML = `<div style="font-size:12.5px;color:var(--text-dim);margin-bottom:8px">Nenhum substituto adicionado.</div>`; return; }
+  wrap.innerHTML = substitutosForm.map((s, i) => `<div class="sub-chip"><span><span class="c">#${escapeHtml(s.codigo)}</span> ${escapeHtml(s.nome)}</span><button data-i="${i}" title="Remover">✕</button></div>`).join("");
+  wrap.querySelectorAll("button").forEach(btn => btn.onclick = () => { substitutosForm.splice(+btn.dataset.i, 1); renderSubstitutosForm(); });
+}
+renderSubstitutosForm();
+$("btnAddSubstituto").onclick = () => {
+  const row = document.createElement("div"); row.className = "sub-row";
+  row.innerHTML = `<div class="autocomplete-wrap"><input type="text" placeholder="Digite código ou nome do substituto..."><div class="ac-results"></div></div><button class="btn-ghost btn-small" type="button">✕</button>`;
+  $("btnAddSubstituto").insertAdjacentElement("beforebegin", row);
+  const input = row.querySelector("input");
+  attachAutocomplete(input, row.querySelector(".ac-results"), item => {
+    if(produtoAtual && item.codigo === produtoAtual.codigo){ toast("Substituto não pode ser o mesmo produto.", true); return; }
+    if(substitutosForm.some(s => s.codigo === item.codigo)){ toast("Esse código já foi adicionado.", true); row.remove(); return; }
+    substitutosForm.push(item); renderSubstitutosForm(); row.remove();
+  }, () => substitutosForm.map(s => s.codigo));
+  input.focus(); row.querySelector("button").onclick = () => row.remove();
+};
+$("fTemPrevisao").onchange = e => $("previsaoBox").classList.toggle("show", e.target.checked);
+
+function limparForm(){
+  editandoId = null; produtoAtual = null; substitutosForm = [];
+  $("selectedProdutoBox").classList.remove("show"); renderSubstitutosForm(); setSituacao("baixa");
+  $("fTemPrevisao").checked = false; $("fPreOrder").checked = false; $("previsaoBox").classList.remove("show");
+  $("fDataPrevisao").value = ""; $("fObservacao").value = "";
+  $("btnSalvar").textContent = "Adicionar à lista"; $("formTitulo").textContent = "Cadastrar produto"; $("btnCancelarEdicao").classList.add("hidden");
+}
+$("btnCancelarEdicao").onclick = limparForm;
+
+$("btnSalvar").onclick = async () => {
+  if(!produtoAtual){ toast("Selecione o produto pelo código.", true); return; }
+  const temPrevisao = $("fTemPrevisao").checked;
+  if(temPrevisao && !$("fDataPrevisao").value){ toast("Informe a data prevista ou desmarque a previsão.", true); return; }
+  const dup = !editandoId && produtos.some(p => !p.resolvido && !p.avisado_em && p.codigo === produtoAtual.codigo);
+  if(dup && !confirm("Esse código já está na lista de ativos. Adicionar mesmo assim?")) return;
+  const payload = { codigo: produtoAtual.codigo, nome: produtoAtual.nome, situacao: situacaoForm, tem_previsao: temPrevisao,
+    data_previsao: temPrevisao ? $("fDataPrevisao").value : null, pre_order: $("fPreOrder").checked,
+    codigos_substitutos: substitutosForm, observacao: $("fObservacao").value.trim() || null, resolvido: false, avisado_em: null };
+  const btn = $("btnSalvar"); btn.disabled = true; btn.textContent = "Salvando...";
+  const { error } = editandoId ? await supa.from(T_STATUS).update(payload).eq("id", editandoId) : await supa.from(T_STATUS).insert(payload);
+  btn.disabled = false;
+  if(error){ btn.textContent = editandoId ? "Salvar edição" : "Adicionar à lista"; toast("Erro ao salvar: " + error.message, true); return; }
+  toast(editandoId ? "Edição salva." : "Produto adicionado."); limparForm();
+};
+
+function editarProduto(id){
+  const p = produtos.find(x => String(x.id) === String(id)); if(!p){ toast("Item não encontrado.", true); return; }
+  editandoId = p.id; produtoAtual = { codigo: p.codigo, nome: p.nome };
+  $("selNomeProduto").textContent = `#${p.codigo} — ${p.nome}`; $("selectedProdutoBox").classList.add("show");
+  setSituacao(p.situacao || "baixa"); $("fTemPrevisao").checked = !!p.tem_previsao; $("previsaoBox").classList.toggle("show", !!p.tem_previsao);
+  $("fDataPrevisao").value = p.data_previsao || ""; $("fPreOrder").checked = !!p.pre_order;
+  substitutosForm = (p.codigos_substitutos || []).map(x => ({...x})); renderSubstitutosForm(); $("fObservacao").value = p.observacao || "";
+  $("btnSalvar").textContent = "Salvar edição"; $("formTitulo").textContent = "Editando #" + p.codigo; $("btnCancelarEdicao").classList.remove("hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ========= LISTA DE ATIVOS ========= */
+function ultimoEnvioDe(codigo){
+  const hs = historico.filter(h => h.codigo === codigo);
+  if(!hs.length) return null;
+  return hs.reduce((a, b) => new Date(a.enviado_em) > new Date(b.enviado_em) ? a : b);
+}
+function fmtEnvio(ue){
+  if(!ue) return `<span class="dim">—</span>`;
+  const d = new Date(ue.enviado_em);
+  return d.toDateString() === new Date().toDateString()
+    ? `<span class="badge sent">hoje ${d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})}</span>`
+    : `<span class="dim">${fmtData(ue.enviado_em)}</span>`;
+}
+function renderProdutos(){
+  const wrap = $("listaProdutos"), ativos = produtos.filter(p => !p.resolvido && !p.avisado_em);
+  $("nAtivos").textContent = ativos.length;
+  if(!ativos.length){ wrap.innerHTML = `<div class="empty">Nenhum produto em baixa ou zerado no momento.<br>Cadastre abaixo para montar o informativo.</div>`; updatePreview(); return; }
+  const head = `<div class="prow head"><div></div><div>Código</div><div>Produto</div><div>Situação</div><div>Previsão</div><div>Pré-order</div><div>Substitutos</div><div>Último envio</div><div>Ações</div></div>`;
+  wrap.innerHTML = head + ativos.map(p => {
+    const checked = selectedProdutos.has(String(p.id)) ? "checked" : "";
+    const subs = p.codigos_substitutos || [];
+    const subsTxt = subs.length ? subs.map(s => "#" + s.codigo).join(", ") : "—";
+    const subsTip = subs.map(s => `#${s.codigo} ${s.nome}`).join("\n");
+    return `<div class="prow ${p.situacao}">
+      <div><input type="checkbox" data-id="${p.id}" class="chkProduto" ${checked}></div>
+      <div class="cell codigo">#${escapeHtml(p.codigo)}</div>
+      <div class="cell nome" title="${escapeHtml(p.nome + (p.observacao ? "\n📝 " + p.observacao : ""))}">${escapeHtml(p.nome)}${p.observacao ? " 📝" : ""}</div>
+      <div class="cell"><span class="badge ${p.situacao}">${p.situacao === "zerado" ? "Zerado" : "Baixo estoque"}</span></div>
+      <div class="cell ${p.tem_previsao && p.data_previsao ? "" : "dim"}">${p.tem_previsao && p.data_previsao ? fmtData(p.data_previsao) : "Sem reposição"}</div>
+      <div class="cell"><span class="badge ${p.pre_order ? "pre-ok" : "pre-no"}">${p.pre_order ? "Sim" : "Não"}</span></div>
+      <div class="cell ${subs.length ? "" : "dim"}" title="${escapeHtml(subsTip)}">${escapeHtml(subsTxt)}</div>
+      <div class="cell">${fmtEnvio(ultimoEnvioDe(p.codigo))}</div>
+      <div class="acts"><button class="btn-ghost" data-edit="${p.id}">Editar</button><button class="btn-ghost" data-resolve="${p.id}">Resolvido</button><button class="btn-danger-ghost" data-delete="${p.id}">Excluir</button></div>
+    </div>`;
+  }).join("");
+  wrap.querySelectorAll(".chkProduto").forEach(chk => chk.onchange = () => { chk.checked ? selectedProdutos.add(chk.dataset.id) : selectedProdutos.delete(chk.dataset.id); updatePreview(); });
+  wrap.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => editarProduto(b.dataset.edit));
+  wrap.querySelectorAll("[data-resolve]").forEach(b => b.onclick = async () => { const { error } = await supa.from(T_STATUS).update({ resolvido: true }).eq("id", b.dataset.resolve); toast(error ? "Erro: " + error.message : "Marcado como resolvido.", !!error); });
+  wrap.querySelectorAll("[data-delete]").forEach(b => b.onclick = async () => { if(!confirm("Excluir esse produto da lista?")) return; const { error } = await supa.from(T_STATUS).delete().eq("id", b.dataset.delete); toast(error ? "Erro: " + error.message : "Excluído.", !!error); });
+  updatePreview();
+}
+$("selectAllProdutos").onclick = () => {
+  const ativos = produtos.filter(p => !p.resolvido && !p.avisado_em), all = ativos.every(p => selectedProdutos.has(String(p.id)));
+  if(all) selectedProdutos.clear(); else ativos.forEach(p => selectedProdutos.add(String(p.id)));
+  renderProdutos();
+};
+
+/* ========= LOJAS (busca + grupos) ========= */
+const grupoDe = nome => nome.startsWith("ESTOQUE X") ? "Estoque X lojas" : nome.startsWith("RC9 X") ? "RC9 X lojas" : "Outros";
+function renderLojas(){
+  const q = norm($("buscaLoja").value.trim()), wrap = $("listaLojas");
+  const vis = LOJAS.filter(([, n]) => !q || norm(n).includes(q));
+  if(!vis.length){ wrap.innerHTML = `<div class="empty" style="padding:16px">Nenhuma loja encontrada.</div>`; return; }
+  const gr = {}; vis.forEach(l => (gr[grupoDe(l[1])] = gr[grupoDe(l[1])] || []).push(l));
+  wrap.innerHTML = Object.entries(gr).map(([g, ls]) => `<div class="store-group"><span>${g} · ${ls.filter(l => selectedLojas.has(l[0])).length}/${ls.length}</span><span class="link" data-grp="${g}">marcar grupo</span></div>` +
+    `<div class="sgrid">` + ls.map(([jid, nome]) => `<label class="store-item"><input type="checkbox" class="chkLoja" data-jid="${jid}" ${selectedLojas.has(jid) ? "checked" : ""}><span>${escapeHtml(nome)}</span></label>`).join("") + `</div>`).join("");
+  wrap.querySelectorAll(".chkLoja").forEach(c => c.onchange = () => { c.checked ? selectedLojas.add(c.dataset.jid) : selectedLojas.delete(c.dataset.jid); renderLojas(); updatePreview(); });
+  wrap.querySelectorAll("[data-grp]").forEach(a => a.onclick = () => {
+    const ls = gr[a.dataset.grp], all = ls.every(l => selectedLojas.has(l[0]));
+    ls.forEach(l => all ? selectedLojas.delete(l[0]) : selectedLojas.add(l[0])); renderLojas(); updatePreview();
+  });
+}
+$("buscaLoja").oninput = renderLojas;
+$("selectAllLojas").onclick = () => { const all = LOJAS.every(([j]) => selectedLojas.has(j)); LOJAS.forEach(([j]) => all ? selectedLojas.delete(j) : selectedLojas.add(j)); renderLojas(); updatePreview(); };
+renderLojas();
+
+/* ========= MENSAGEM ========= */
+function buildMessage(){
+  const sel = produtos.filter(p => selectedProdutos.has(String(p.id))); if(!sel.length) return "";
+  return "🔴 *ATUALIZAÇÃO DE ESTOQUE*\n\n" + sel.map(p => {
+    const subs = p.codigos_substitutos || [];
+    let b = `🔖 *Código:* ${p.codigo} – ${p.nome}\n⚠️ *Situação:* ${p.situacao === "zerado" ? "ZERADO" : "BAIXO ESTOQUE"}\n`;
+    b += `📅 *Previsão de chegada:* ${p.tem_previsao && p.data_previsao ? fmtData(p.data_previsao) : "SEM REPOSIÇÃO"}\n🔄 *Pré-order:* ${p.pre_order ? "Disponível" : "Indisponível"}\n`;
+    b += `➡️ *Substituto(s):* ${subs.length ? subs.map(s => `${s.codigo} – ${s.nome}`).join("; ") : "Nenhum"}`;
+    if(p.observacao) b += `\n📝 ${p.observacao}`;
+    return b;
+  }).join("\n\n➖➖➖➖➖➖➖➖➖\n\n");
+}
+function updatePreview(){
+  const msg = buildMessage(); $("preview").textContent = msg;
+  $("btnEnviar").disabled = !(msg && selectedLojas.size);
+  $("sendSummary").innerHTML = msg ? `<b>${selectedProdutos.size}</b> produto(s) · <b>${selectedLojas.size}</b> loja(s) selecionada(s)` : "";
+}
+
+/* ========= ENVIO (com confirmação, progresso, histórico e reenvio das falhas) ========= */
+async function enviarPara(jids, msg, onProgress){
+  const res = {};
+  for(let i = 0; i < jids.length; i++){
+    onProgress(i + 1, jids.length);
+    try{
+      const r = await fetch(`${EVOLUTION_URL}/message/sendText/${EVOLUTION_INSTANCE}`, { method: "POST", headers: { "Content-Type": "application/json", "apikey": EVOLUTION_APIKEY }, body: JSON.stringify({ number: jids[i], text: msg }) });
+      res[jids[i]] = r.ok;
+    }catch(e){ res[jids[i]] = false; }
+    await new Promise(r => setTimeout(r, 350));
+  }
+  return res;
+}
+const nomeLoja = jid => (LOJAS.find(l => l[0] === jid) || [jid, jid])[1];
+
+$("btnEnviar").onclick = () => {
+  const sel = produtos.filter(p => selectedProdutos.has(String(p.id))), jids = Array.from(selectedLojas);
+  if(!sel.length || !jids.length) return;
+  const jaHoje = sel.filter(p => { const u = ultimoEnvioDe(p.codigo); return u && new Date(u.enviado_em).toDateString() === new Date().toDateString(); });
+  $("confBody").innerHTML = `<p style="margin:0 0 8px">Você vai enviar <b>${sel.length} produto(s)</b> para <b>${jids.length} grupo(s)</b>:</p>
+    <ul>${sel.map(p => `<li>#${escapeHtml(p.codigo)} ${escapeHtml(p.nome)}</li>`).join("")}</ul>
+    ${jaHoje.length ? `<p style="color:var(--baixa);margin:0 0 10px">⚠️ ${jaHoje.length} já ${jaHoje.length === 1 ? "foi enviado" : "foram enviados"} hoje: ${jaHoje.map(p => "#" + escapeHtml(p.codigo)).join(", ")}.</p>` : ""}
+    <p style="color:var(--text-dim);margin:0 0 6px">Lojas: ${jids.slice(0, 6).map(j => escapeHtml(nomeLoja(j).replace(/^(ESTOQUE|RC9) X /, ""))).join(", ")}${jids.length > 6 ? ` e mais ${jids.length - 6}` : ""}.</p>`;
+  $("overlayConf").classList.add("open");
+};
+$("confNao").onclick = () => $("overlayConf").classList.remove("open");
+$("overlayConf").onclick = e => { if(e.target === $("overlayConf")) $("overlayConf").classList.remove("open"); };
+document.addEventListener("keydown", e => { if(e.key === "Escape") $("overlayConf").classList.remove("open"); });
+
+$("confSim").onclick = async () => {
+  $("overlayConf").classList.remove("open");
+  const sel = produtos.filter(p => selectedProdutos.has(String(p.id))), jids = Array.from(selectedLojas), msg = buildMessage();
+  const btn = $("btnEnviar"), pg = $("progress"), rs = $("result");
+  btn.disabled = true; pg.classList.add("show"); rs.className = "result";
+  const res = await enviarPara(jids, msg, (i, n) => { btn.textContent = `Enviando... (${i}/${n})`; pg.firstElementChild.style.width = (i / n * 100) + "%"; });
+  btn.textContent = "Enviar para lojas selecionadas"; pg.classList.remove("show"); pg.firstElementChild.style.width = "0";
+  const lote = novoLote(), agora = new Date().toISOString();
+  const lojas = jids.map(j => ({ jid: j, nome: nomeLoja(j), ok: !!res[j] }));
+  const rows = sel.map(p => ({ lote, enviado_em: agora, codigo: p.codigo, nome: p.nome, situacao: p.situacao, data_previsao: p.tem_previsao ? p.data_previsao : null,
+    pre_order: !!p.pre_order, substitutos: p.codigos_substitutos || [], observacao: p.observacao || null, lojas }));
+  const { error } = await supa.from(T_HIST).insert(rows);
+  if(error) toast("Enviado, mas não consegui gravar o histórico: " + error.message, true);
+  ultimoEnvio = { lote, msg, falhas: jids.filter(j => !res[j]) };
+  const ok = jids.length - ultimoEnvio.falhas.length;
+  if(ok > 0){
+    const { error: eAv } = await supa.from(T_STATUS).update({ avisado_em: agora }).in("id", sel.map(p => p.id));
+    if(eAv) toast("Enviado, mas não consegui tirar da tela principal: " + eAv.message + " (rode o SQL avisado_em.sql)", true);
+    sel.forEach(p => selectedProdutos.delete(String(p.id)));
+    await loadProdutos();
+  }
+  rs.className = "result show " + (ultimoEnvio.falhas.length ? "bad" : "ok");
+  rs.innerHTML = ultimoEnvio.falhas.length
+    ? `Enviado para ${ok} loja(s). <b>${ultimoEnvio.falhas.length} falharam:</b> ${ultimoEnvio.falhas.map(j => escapeHtml(nomeLoja(j))).join(", ")}.<br><button id="btnReenviar">Reenviar só para as que falharam</button>`
+    : `✓ Enviado para ${ok} loja(s) e registrado no histórico.`;
+  if($("btnReenviar")) $("btnReenviar").onclick = reenviarFalhas;
+  loadHistorico();
+};
+async function reenviarFalhas(){
+  const u = ultimoEnvio; if(!u || !u.falhas.length) return;
+  const rs = $("result"); rs.innerHTML = "Reenviando...";
+  const res = await enviarPara(u.falhas, u.msg, () => {});
+  const rows = historico.filter(h => h.lote === u.lote);
+  for(const h of rows){
+    const lojas = (h.lojas || []).map(l => res[l.jid] !== undefined ? { ...l, ok: !!res[l.jid] } : l);
+    await supa.from(T_HIST).update({ lojas }).eq("id", h.id);
+  }
+  u.falhas = u.falhas.filter(j => !res[j]);
+  rs.className = "result show " + (u.falhas.length ? "bad" : "ok");
+  rs.innerHTML = u.falhas.length ? `Ainda falharam: ${u.falhas.map(j => escapeHtml(nomeLoja(j))).join(", ")}.` : "✓ Reenvio concluído, todas as lojas receberam.";
+  loadHistorico();
+}
+
+/* ========= HISTÓRICO ========= */
+async function loadHistorico(){
+  const { data, error } = await supa.from(T_HIST).select("*").order("enviado_em", { ascending: false }).limit(5000);
+  if(error){ $("histLista").innerHTML = `<div class="empty">Não consegui carregar o histórico.<br>${escapeHtml(error.message)}<br>Confirme se a tabela <b>informativo_historico</b> foi criada (rode o SQL).</div>`; return; }
+  historico = data || []; $("nHist").textContent = new Set(historico.map(h => h.codigo)).size;
+  renderHistorico(); renderProdutos();
+}
+const abertos = new Set();
+const curto = n => String(n).replace(/^(ESTOQUE|RC9) X /, "");
+function celulaGrupos(h){
+  const ls = h.lojas || [], ok = ls.filter(l => l.ok).length;
+  if(!ls.length) return `<span class="dim">registro manual</span>`;
+  return ok === ls.length ? `<span class="okgrp">${ok}/${ls.length}</span>` : `<span class="badge zerado">${ok}/${ls.length}</span>`;
+}
+function resumoGrupos(ls, ok, bad){
+  if(!ls.length) return `<div class="gr-line ok">✓ Enviado (registro anterior ao histórico, sem lista de grupos)</div>`;
+  const todos = ls.length >= LOJAS.length;
+  let h = "";
+  if(bad.length) h += `<div class="gr-line bad">✕ Falhou em ${bad.length} grupo(s):</div><div class="chips">${bad.map(l => `<span class="chip fail">${escapeHtml(curto(l.nome))}</span>`).join("")}</div>`;
+  else h += `<div class="gr-line ok">✓ ${todos ? "Enviado para todos os grupos" : "Enviado para " + ok.length + " de " + LOJAS.length + " grupos"} (${ok.length}/${ls.length})</div>`;
+  h += `<details class="full"><summary>ver lista completa</summary><div class="chips">${ls.map(l => `<span class="chip ${l.ok ? "" : "fail"}">${l.ok ? "" : "✕ "}${escapeHtml(curto(l.nome))}</span>`).join("")}</div></details>`;
+  return h;
+}
+function renderHistorico(){
+  const q = norm($("hBusca").value.trim()), sit = $("hSit").value, per = +$("hPer").value;
+  const corte = per ? Date.now() - per * 86400000 : 0;
+  const base = historico.filter(h => new Date(h.enviado_em).getTime() >= corte && (!sit || h.situacao === sit) && (!q || norm(h.codigo + " " + h.nome).includes(q)));
+  const porCod = {}; base.forEach(h => (porCod[h.codigo] = porCod[h.codigo] || []).push(h));
+  const grupos = Object.entries(porCod).map(([codigo, hs]) => {
+    hs.sort((a, b) => new Date(b.enviado_em) - new Date(a.enviado_em));
+    const lojas = new Set(); hs.forEach(h => (h.lojas || []).forEach(l => l.ok && lojas.add(l.jid)));
+    return { codigo, nome: hs[0].nome, situacao: hs[0].situacao, hs, lojas: lojas.size, ultimo: hs[0].enviado_em };
+  }).sort((a, b) => new Date(b.ultimo) - new Date(a.ultimo));
+  const lotes = new Set(base.map(h => h.lote)), todasLojas = new Set();
+  base.forEach(h => (h.lojas || []).forEach(l => l.ok && todasLojas.add(l.jid)));
+  $("histKpis").innerHTML = `<div class="kpi"><b>${grupos.length}</b><span>códigos já enviados</span></div><div class="kpi"><b>${lotes.size}</b><span>envios realizados</span></div><div class="kpi"><b>${todasLojas.size}</b><span>grupos alcançados</span></div><div class="kpi"><b>${grupos.length ? fmtData(grupos[0].ultimo) : "—"}</b><span>último envio</span></div>`;
+  if(!grupos.length){ $("histCab").innerHTML = ""; $("histLista").innerHTML = `<div class="empty">${historico.length ? "Nada encontrado com esses filtros." : "Nenhum informativo enviado ainda. Os próximos envios aparecem aqui."}</div>`; return; }
+  $("histCab").innerHTML = `<div class="hgrid hhead head"><div>Produto</div><div>Código</div><div>Situação</div><div>Envios</div><div>Último envio</div><div>Grupos</div><div></div></div>`;
+  $("histLista").innerHTML = grupos.map(g => `<div class="hrow ${abertos.has(g.codigo) ? "open" : ""}" data-cod="${escapeHtml(g.codigo)}">
+    <div class="hgrid hhead"><div class="cell nm" title="${escapeHtml(g.nome)}">${escapeHtml(g.nome)}</div>
+      <div class="cell mono dim">#${escapeHtml(g.codigo)}</div>
+      <div class="cell"><span class="badge ${g.situacao}">${g.situacao === "zerado" ? "Zerado" : "Baixo estoque"}</span></div>
+      <div class="cell"><b>${g.hs.length}</b></div>
+      <div class="cell">${fmtData(g.ultimo)}</div>
+      <div class="cell">${celulaGrupos(g.hs[0])}</div><div class="chev">›</div></div>
+    <div class="hbody">${g.hs.map(h => { const ls = h.lojas || [], ok = ls.filter(l => l.ok), bad = ls.filter(l => !l.ok);
+      return `<div class="send"><div class="send-top"><span class="when">${fmtDH(h.enviado_em)}</span><span class="meta">${escapeHtml(h.situacao === "zerado" ? "Zerado" : "Baixo estoque")} · previsão ${h.data_previsao ? fmtData(h.data_previsao) : "sem reposição"} · pré-order ${h.pre_order ? "sim" : "não"}</span>
+        <span class="badge ${bad.length ? "zerado" : "pre-ok"}">${ls.length ? ok.length + "/" + ls.length + " grupos" : "registro manual"}</span></div>
+        ${resumoGrupos(ls, ok, bad)}</div>`; }).join("")}</div></div>`).join("");
+  $("histLista").querySelectorAll(".hhead").forEach(h => h.onclick = () => { const r = h.parentElement, c = r.dataset.cod; r.classList.toggle("open"); r.classList.contains("open") ? abertos.add(c) : abertos.delete(c); });
+}
+["hBusca", "hSit", "hPer"].forEach(i => $(i).addEventListener("input", renderHistorico));
+
+/* ========= SUPABASE: LOAD + REALTIME ========= */
+async function loadProdutos(){
+  const { data, error } = await supa.from(T_STATUS).select("*").order("created_at", { ascending: false });
+  if(error){ toast("Erro ao carregar: " + error.message, true); return; }
+  produtos = data || []; renderProdutos();
+}
+supa.channel("produtos_status_changes").on("postgres_changes", { event: "*", schema: "public", table: T_STATUS }, () => loadProdutos()).subscribe();
+loadProdutos(); loadHistorico();
+
+/* ================= SUBSTITUTOS (vínculos nos dois sentidos) ================= */
+let produtoSub = null, links = [], nomes = {};
+const nSubs = cod => links.filter(l => l.codigo_produto === cod).length;
+const dicaSub = it => nSubs(it.codigo) ? `<span class="tagsub">${nSubs(it.codigo)} subst.</span>` : "";
+
+async function loadLinks(){
+  const { data, error } = await supa.from(T_SUBSTITUTOS).select("codigo_produto,codigo_substituto").limit(10000);
+  if(error){ $("gLista").innerHTML = `<div class="empty">Não consegui carregar os vínculos.<br>${escapeHtml(error.message)}</div>`; return; }
+  links = data || [];
+  const codes = [...new Set(links.flatMap(l => [l.codigo_produto, l.codigo_substituto]))].filter(c => !(c in nomes));
+  for(let k = 0; k < codes.length; k += 150){
+    const { data: cat } = await supa.from(T_CATALOGO).select("codigo,nome").in("codigo", codes.slice(k, k + 150));
+    (cat || []).forEach(r => nomes[r.codigo] = r.nome);
+  }
+  renderGrupos(); renderProdutoSub();
+}
+function grupos(){
+  const pai = {}; const f = x => pai[x] === x ? x : (pai[x] = f(pai[x]));
+  links.forEach(l => { [l.codigo_produto, l.codigo_substituto].forEach(c => { if(!(c in pai)) pai[c] = c; }); pai[f(l.codigo_produto)] = f(l.codigo_substituto); });
+  const g = {}; Object.keys(pai).forEach(c => (g[f(c)] = g[f(c)] || []).push(c));
+  return Object.values(g).map(a => a.sort((x, y) => x.localeCompare(y, "pt-BR", { numeric: true }))).sort((a, b) => a[0].localeCompare(b[0], "pt-BR", { numeric: true }));
+}
+const abertosG = new Set();
+function renderGrupos(){
+  const q = norm($("gBusca").value.trim()), todos = grupos();
+  const vis = todos.filter(g => !q || g.some(c => norm(c + " " + (nomes[c] || "")).includes(q)));
+  $("subKpis").innerHTML = `<div class="kpi"><b>${todos.length}</b><span>grupos de substituição</span></div><div class="kpi"><b>${todos.reduce((n, g) => n + g.length, 0)}</b><span>códigos vinculados</span></div><div class="kpi"><b>${todos.length ? Math.max(...todos.map(g => g.length)) : 0}</b><span>códigos no maior grupo</span></div>`;
+  if(!vis.length){ $("gCab").innerHTML = ""; $("gLista").innerHTML = `<div class="empty">${todos.length ? "Nada encontrado com essa busca." : "Nenhum vínculo cadastrado ainda. Use o campo acima para vincular o primeiro."}</div>`; return; }
+  $("gCab").innerHTML = `<div class="sgrid2 hhead head"><div>Produtos do grupo</div><div>Códigos</div><div></div></div>`;
+  $("gLista").innerHTML = vis.map(g => { const id = g[0];
+    const resumo = g.map(c => `#${c} ${nomes[c] || ""}`).join("  ·  ");
+    return `<div class="hrow ${abertosG.has(id) ? "open" : ""}" data-g="${escapeHtml(id)}"><div class="sgrid2 hhead"><div class="cell nm" title="${escapeHtml(resumo)}">${escapeHtml(resumo)}</div><div class="cell"><b>${g.length}</b></div><div class="chev">›</div></div>
+      <div class="hbody">${g.map(c => `<div class="gcod"><div class="cell mono dim">#${escapeHtml(c)}</div><div class="cell nm" title="${escapeHtml(nomes[c] || "")}">${escapeHtml(nomes[c] || "—")}</div><div><button class="btn-danger-ghost btn-small" data-tirar="${escapeHtml(c)}">Tirar do grupo</button></div></div>`).join("")}</div></div>`; }).join("");
+  $("gLista").querySelectorAll(".hhead").forEach(h => h.onclick = e => { if(e.target.closest("button")) return; const r = h.parentElement, id = r.dataset.g; r.classList.toggle("open"); r.classList.contains("open") ? abertosG.add(id) : abertosG.delete(id); });
+  $("gLista").querySelectorAll("[data-tirar]").forEach(b => b.onclick = async () => {
+    const c = b.dataset.tirar;
+    if(!confirm(`Tirar #${c} do grupo? Todos os vínculos desse código serão removidos.`)) return;
+    await supa.from(T_SUBSTITUTOS).delete().eq("codigo_produto", c);
+    const { error } = await supa.from(T_SUBSTITUTOS).delete().eq("codigo_substituto", c);
+    toast(error ? "Erro: " + error.message : "Código removido do grupo.", !!error); loadLinks();
+  });
+}
+$("gBusca").addEventListener("input", renderGrupos);
+
+function renderProdutoSub(){
+  if(!produtoSub) return;
+  const wrap = $("listaSubstitutosVinculados"), lista = links.filter(l => l.codigo_produto === produtoSub.codigo).map(l => l.codigo_substituto);
+  $("subCount").textContent = lista.length;
+  if(!lista.length){ wrap.innerHTML = `<div class="empty" style="padding:16px">Nenhum substituto vinculado ainda.</div>`; return; }
+  wrap.innerHTML = lista.map(c => `<div class="link-item"><div class="info"><span class="c mono">#${escapeHtml(c)}</span> ${escapeHtml(nomes[c] || "")}</div><button class="btn-danger-ghost btn-small" data-codigo="${escapeHtml(c)}">Remover</button></div>`).join("");
+  wrap.querySelectorAll("button[data-codigo]").forEach(btn => btn.onclick = async () => {
+    const alvo = btn.dataset.codigo;
+    await supa.from(T_SUBSTITUTOS).delete().eq("codigo_produto", produtoSub.codigo).eq("codigo_substituto", alvo);
+    const { error } = await supa.from(T_SUBSTITUTOS).delete().eq("codigo_produto", alvo).eq("codigo_substituto", produtoSub.codigo);
+    toast(error ? "Erro: " + error.message : "Removido.", !!error); loadLinks();
+  });
+}
+attachAutocomplete($("fCodigoBuscaSub"), $("acProdutoSub"), item => {
+  produtoSub = item; nomes[item.codigo] = item.nome; $("fCodigoBuscaSub").value = "";
+  $("selNomeProdutoSub").textContent = `#${item.codigo} — ${item.nome}`; $("selectedProdutoSubBox").classList.add("show");
+  $("cardSubstitutosLista").style.display = "block"; renderProdutoSub();
+}, null, dicaSub);
+$("btnLimparProdutoSub").onclick = () => { produtoSub = null; $("selectedProdutoSubBox").classList.remove("show"); $("cardSubstitutosLista").style.display = "none"; };
+
+attachAutocomplete($("fNovoSubstituto"), $("acNovoSubstituto"), async item => {
+  if(!produtoSub) return;
+  if(item.codigo === produtoSub.codigo){ toast("Não pode vincular o produto a ele mesmo.", true); return; }
+  nomes[item.codigo] = item.nome;
+  const g = new Set([produtoSub.codigo]); links.filter(l => l.codigo_produto === produtoSub.codigo).forEach(l => g.add(l.codigo_substituto)); g.add(item.codigo);
+  const grupo = Array.from(g), rows = [];
+  grupo.forEach(x => grupo.forEach(y => { if(x !== y) rows.push({ codigo_produto: x, codigo_substituto: y }); }));
+  const { error } = await supa.from(T_SUBSTITUTOS).upsert(rows, { onConflict: "codigo_produto,codigo_substituto" });
+  $("fNovoSubstituto").value = "";
+  if(error){ toast("Erro: " + error.message, true); return; }
+  toast("Substituto vinculado (nos dois sentidos)."); loadLinks();
+}, () => produtoSub ? [produtoSub.codigo].concat(links.filter(l => l.codigo_produto === produtoSub.codigo).map(l => l.codigo_substituto)) : [], dicaSub);
+supa.channel("produto_substitutos_changes").on("postgres_changes", { event: "*", schema: "public", table: T_SUBSTITUTOS }, () => loadLinks()).subscribe();
+loadLinks();
+</script>
+</body>
+</html>
